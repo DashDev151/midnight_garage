@@ -96,8 +96,8 @@ describe('ServiceJobsScreen', () => {
   it('accepting a job brings the car into the shop instantly', async () => {
     const game = useGameStore()
     game.newGame(1)
-    // Nothing gates acceptance at tier 1 - every shipped template defaults to
-    // minToolTier 1.
+    // Nothing gates acceptance at tier 1 - no shipped template a fresh board
+    // offers asks for a Restore.
     warpToOffers(game)
     const offer = game.serviceJobOffers[0]
     if (!offer) throw new Error('expected an offer on the board')
@@ -170,13 +170,27 @@ describe('ServiceJobsScreen', () => {
     warpToOffers(game)
     const offer = game.gameState.serviceJobOffers[0]
     if (!offer) throw new Error('expected an offer on the board')
-    // Raise every task's tier ceiling one above the shop's all-tier-1 start -
-    // the shipped content is all-default-1, so a deficit has to be injected.
+    // Ask every task for mint - Restore work, which waits for the covering
+    // shop, and no shipped template a fresh board offers asks for it.
     game.gameState = {
       ...game.gameState,
       serviceJobOffers: game.gameState.serviceJobOffers.map((o) =>
         o.id === offer.id
-          ? { ...o, tasks: o.tasks.map((t) => ({ ...t, minToolTier: 2 as const })) }
+          ? {
+              ...o,
+              tasks: o.tasks.map((t) =>
+                t.kind === 'slotCondition'
+                  ? {
+                      ...t,
+                      requirement: {
+                        ...t.requirement,
+                        minBand: 'mint' as const,
+                        minGrade: undefined,
+                      },
+                    }
+                  : t,
+              ),
+            }
           : o,
       ),
     }

@@ -51,6 +51,7 @@ import {
 } from './marketValue'
 import { createInitialGameState } from './newGame'
 import { makeCarOrigin } from './provenance'
+import { partFixCostYen, sumFixCosts, type PartFixCost } from './repairJobs'
 import { createRng } from './rng'
 import { scrapShellPriceYen } from './selling'
 import { freshToolTiers } from './toolLines'
@@ -489,12 +490,21 @@ export function computeModelBalanceProbe(
   const flipMarginYen = Math.round(cleanValueYen) - buyPriceYen - worstBillYen
   const flipMarginFraction = cleanValueYen > 0 ? flipMarginYen / cleanValueYen : 0
 
+  // Priced through the shared fix price, from a worn-out start: a consumable
+  // has no repair path at any band, so the answer is always a replacement at
+  // its class's stock price and never a hire.
   const consumablesCostYen =
-    CONSUMABLE_PART_IDS.reduce(
-      (sum, partId) =>
-        sum + context.partsTaxonomyById[partId]!.stockReplacementPriceYenByClass[fitmentClass],
-      0,
-    ) + MATERIALS_COST_YEN
+    sumFixCosts(
+      CONSUMABLE_PART_IDS.map((partId) =>
+        partFixCostYen(
+          context.partsTaxonomyById[partId]!,
+          context.stockPartByCarPartId[fitmentClass][partId]!,
+          'poor',
+          'mint',
+          context,
+        ),
+      ),
+    ).partsYen + MATERIALS_COST_YEN
   const consumablesShare = model.bookValueYen > 0 ? consumablesCostYen / model.bookValueYen : 0
 
   // The sensible play's own repair: the repairable portion of this car,
@@ -538,6 +548,7 @@ export function computeModelBalanceProbe(
   // `installLaborSlotsFor` refit, the same unconditional charge
   // `serviceJobCostBreakdown` uses, since a restoration always improves the
   // slot it repairs.
+  const benchFixes: PartFixCost[] = []
   for (const partId of ALL_CAR_PART_IDS) {
     const entry = context.partsTaxonomyById[partId]
     if (!entry || !entry.removable) continue
@@ -546,8 +557,10 @@ export function computeModelBalanceProbe(
     const catalogPart = context.partsById[installed.partId]
     if (!catalogPart) continue
     // Repair level 1 (worst-case tooling): matches the fresh-shop assumption
-    // `freshToolTiers()` already applies to the on-car loop above, and
-    // `planPartRepair`'s `costYen` is repair-level-independent regardless.
+    // `freshToolTiers()` already applies to the on-car loop above. Only the
+    // labour is read off the plan; the money is the shared fix price's PARTS
+    // half, since a whole-car restoration buys no tool-hire day
+    // (`carCostToBandYen`).
     const plan = planPartRepair(
       installed.band,
       effectiveExpectationBand,
@@ -558,9 +571,12 @@ export function computeModelBalanceProbe(
       context.economy.energy.energyPerBandStepByToolTier,
     )
     if (plan.laborSlotsRequired === 0) continue
-    repairCostYen += plan.costYen
+    benchFixes.push(
+      partFixCostYen(entry, catalogPart, installed.band, effectiveExpectationBand, context),
+    )
     repairLaborSlots += plan.laborSlotsRequired + installLaborSlotsFor(partId, context)
   }
+  repairCostYen += sumFixCosts(benchFixes).partsYen
   // The body pipeline's own money for the two zone-derived carriers, which
   // neither loop above can plan: their bands are derived, so `planGroupRepair`
   // skips them by design. This is the same call `carCostToBandYen` makes, and

@@ -16,7 +16,7 @@ import {
   type RequirementSpec,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { carCostToBandYen, hasForcedInduction, repairCeilingForLevel } from '../src/bands'
+import { carCostToBandYen, hasForcedInduction } from '../src/bands'
 import { isAuctionTierUnlocked } from '../src/catalogs'
 import { buildSimContext } from '../src/context'
 import { resolveBuyPart } from '../src/parts'
@@ -25,7 +25,8 @@ import { lapTimeSecondsFor } from '../src/lapModel'
 import { marketValueYen } from '../src/marketValue'
 import { gradeMissionCar, resolveDeliverMission } from '../src/missions'
 import { createInitialGameState } from '../src/newGame'
-import { accessRoute, naToTurboConversionBlocked, signatureOpFeeYen } from '../src/jobs'
+import { accessRoute, naToTurboConversionBlocked } from '../src/jobs'
+import { repairJobCards, targetBandFor } from '../src/repairJobs'
 import { valuateCarForBuyer } from '../src/valuation'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
@@ -108,13 +109,14 @@ interface AftermarketFit {
  * `endBand` (`carCostToBandYen` - a slot getting a brand new part is never
  * ALSO charged to repair the part it's replacing).
  *
- * `carCostToBandYen` is the tier-INDEPENDENT restoration bill, so the probe
- * cost is unchanged by the repair ceiling - a mint `endBand` slot is always
- * reachable at any tier by BUYING a mint part and fitting it (an install,
- * never repair-gated), which is precisely the price this bill already
- * carries. The tier-1 repair cap only changes the COST of the alternative
- * genuine-period repair route, never whether the required band can be
- * produced - the satisfiability of that is asserted directly in its own
+ * `carCostToBandYen` never reads the player's own lines, hires or shops: it
+ * prices every fix at the fixed assumption of a garage that hires whatever it
+ * does not own. So the probe cost is the same figure whatever this shop
+ * happens to have bolted to its wall, and a mint `endBand` slot is always
+ * reachable by BUYING a mint part and fitting it (an install, never gated on a
+ * band). Needing the covering shop for a Restore only changes the COST of the
+ * alternative genuine-period repair route, never whether the required band can
+ * be produced - the satisfiability of that is asserted directly in its own
  * describe below.
  */
 function buildProbe(modelId: string, endBand: ConditionBand, aftermarket: AftermarketFit[] = []) {
@@ -801,14 +803,13 @@ describe('guarantor mission probes (auction-tier unlock rewards)', () => {
 
 /**
  * The tool-satisfiability the missions previously lacked entirely. The five
- * mint-band missions build their car to mint; under the repair ceiling a
- * fresh (tier-1) shop cannot REPAIR a part above fine, yet mint stays
- * reachable at any tier by BUYING a mint replacement part and FITTING it
- * (an install, never gated by the repair ceiling). So no mission is ever
- * tool-locked: the cap changes the COST of the genuine-period repair
- * route, not whether the required band can be produced. Owning a group's
- * tier-2 machine is what lets a shop reach mint by cheaper repair instead
- * of buying.
+ * mint-band missions build their car to mint. Restore is the only job that
+ * finishes at mint and it is shop work whatever its recipe names, so a fresh
+ * garage cannot REPAIR a part to mint at all - yet mint stays reachable by
+ * BUYING a mint part and FITTING it, which is an install and reads no band. So
+ * no mission is ever tool-locked: what the shop requirement changes is the COST
+ * of the genuine-period repair route, never whether the required band can be
+ * produced.
  */
 describe('the mint-band missions stay satisfiable at any tier (Sprint 93 band ceiling)', () => {
   const MINT_MISSIONS = [
@@ -823,17 +824,38 @@ describe('the mint-band missions stay satisfiable at any tier (Sprint 93 band ce
     for (const id of MINT_MISSIONS) expect(mission(id)).toBeDefined()
   })
 
-  it('a fresh tier-1 shop caps a REPAIR at fine, yet still reaches mint by buying and fitting a part - the cap changes cost, not possibility', () => {
-    const tier1 = createInitialGameState(CONTEXT, 1)
-    // A fresh shop lives under the tier-1 repair ceiling: repair alone stops at
-    // fine on every tool line.
-    for (const tier of Object.values(tier1.toolTiers)) {
-      expect(repairCeilingForLevel(tier, CONTEXT.economy)).toBe('fine')
+  it('a Restore needs the covering shop, yet mint stays reachable by buying and fitting a mint part - the requirement changes cost, not possibility', () => {
+    const fresh = createInitialGameState(CONTEXT, 1)
+    expect(targetBandFor('restore', CONTEXT)).toBe('mint')
+    expect(fresh.toolShopsOwned, 'a fresh garage owns no covering shop').toEqual([])
+
+    // `chassis` is a fixed-surface part, so its Restore card is worked on the
+    // car and no bench staging can stand in for the reason it refuses.
+    const model = CARS.find((c) => c.id === 'honda-civic-sir2-eg6')!
+    const wornCar: CarInstance = {
+      id: 'probe-mint-route',
+      modelId: model.id,
+      year: 1990,
+      mileageKm: 120_000,
+      factoryColour: model.spec.factoryColours[0]!,
+      provenanceNote: '',
+      symptoms: [],
+      apparentBandByPartId: null,
+      parts: stockCarPartsAt(fitmentClassForTier(model.tier), 'worn'),
     }
-    // The always-available mint route, unchanged by the cap: resolveBuyPart yields
-    // a mint instance at any tier, and fitting it is an install (no band gate).
+    const restore = repairJobCards({ ...fresh, ownedCars: [wornCar] }, CONTEXT, {
+      kind: 'installed',
+      carInstanceId: wornCar.id,
+      carPartId: 'chassis',
+    }).find((card) => card.kind === 'restore')!
+    expect(restore.targetBand).toBe('mint')
+    expect(restore.offered).toBe(false)
+    expect(restore.refusal).toBe('needs-shop')
+
+    // The always-available mint route, untouched by that refusal: resolveBuyPart
+    // yields a mint instance at any tier, and fitting it is an install.
     const stockPart = PARTS.find((p) => p.grade === 'stock')!
-    const bought = resolveBuyPart(tier1, stockPart.id, CONTEXT)
+    const bought = resolveBuyPart(fresh, stockPart.id, CONTEXT)
     expect(bought.state.partInventory.at(-1)?.band).toBe('mint')
   })
 })
@@ -885,9 +907,17 @@ describe('machine-shop assist coherence (Sprint 85 decision 6)', () => {
    * Probe (b): make-it-pull is the only authored mission whose satisfiability
    * recipe fits an aftermarket part into a buried slot - the sport camsTiming.
    * Building it means removing the stock cams then installing the sport ones,
-   * both buried engine work, and a shop at tier 1 either slogs that at triple
-   * labour or hires the engine line for the day. Access is bought by the DAY,
-   * so both operations sit under one fee however many of them the build needs.
+   * two buried engine operations. Neither carries a fee of its own: nothing is
+   * charged per operation, because access is bought by the DAY on a whole tool
+   * line, so both operations sit under ONE engine-line hire however many of
+   * them the build needs. A shop that hires nothing pays in energy instead
+   * (`accessRoute` reads `slog`), which is the cash-versus-labour trade.
+   *
+   * The build's own repair walk asks for mint, which is Restore work, and a
+   * Restore has no hire route to price at all (`partFixCostYen` returns no fee
+   * for one) - so the day charged here is the access hire and it is counted
+   * exactly once, with nothing double-charged from inside `probeCostYen`.
+   *
    * The mission must stay satisfiable within its authored budget with that
    * day's hire included, which the one-price budget (== payout, the 1.3x
    * probe-cost margin) absorbs.
@@ -935,50 +965,8 @@ describe('machine-shop assist coherence (Sprint 85 decision 6)', () => {
     }
   })
 
-  /**
-   * The three groups whose slots gate a REPAIR. `signatureOpFeeYen` charges
-   * the group's fee on one of those slots at tier 1 and 0 once the tier-2
-   * machine is owned, and never fires for a light bolt-on slot in the same
-   * group - the no-over-gating check. It is also 0 for the
-   * engine/drivetrain/wheels slots, whose own `machineGate` names other
-   * operations entirely (`install`/`remove` on a buried slot, `bench-fit` on a
-   * tyre), proving the repair predicate never leaks into - or double-charges -
-   * the other three gate sites.
-   */
-  it('the repair-gated slots charge at tier 1, are free at tier 2, and never over-gate light or otherwise-gated work', () => {
-    const { feeYenByGroup } = CONTEXT.economy.toolHire
-    const groups = ['suspension', 'body', 'interior'] as const
-    for (const group of groups) {
-      const tier2State = {
-        ...TIER1_STATE,
-        toolTiers: { ...TIER1_STATE.toolTiers, [group]: 2 },
-      }
-      const slots = Object.values(CONTEXT.partsTaxonomyById)
-        .filter((entry) => entry.group === group && entry.machineGate.includes('repair'))
-        .map((entry) => entry.id)
-      expect(slots.length, `${group} must name repair-gated slots`).toBeGreaterThan(0)
-      for (const slot of slots) {
-        expect(signatureOpFeeYen(slot, TIER1_STATE, CONTEXT), `${slot} gated at tier 1`).toBe(
-          feeYenByGroup[group],
-        )
-        expect(signatureOpFeeYen(slot, tier2State, CONTEXT), `${slot} free once owned`).toBe(0)
-      }
-    }
-    // Light bolt-on work in these groups gates no repair - no fee (no
-    // over-gating). anti-roll bars and steering (suspension), aero (body).
-    for (const light of ['antiRollBars', 'steering', 'aero'] as CarPartId[]) {
-      expect(
-        signatureOpFeeYen(light, TIER1_STATE, CONTEXT),
-        `${light} is light bolt-on work, never a repair-gated op`,
-      ).toBe(0)
-    }
-    // The other three gate sites keep their own operations - a repair is never
-    // gated on an engine/drivetrain buried slot or on a tyre.
-    for (const existing of ['camsTiming', 'gearbox', 'tyres'] as CarPartId[]) {
-      expect(
-        signatureOpFeeYen(existing, TIER1_STATE, CONTEXT),
-        `${existing} gates its own operations, never a repair`,
-      ).toBe(0)
-    }
-  })
+  // Nothing charges a fee per operation. A slot's access is bought by the day
+  // on a whole tool line, or paid for in energy, so there is no per-slot charge
+  // left for this file to pin. What a slot's access costs, and what owning or
+  // hiring its line changes about it, lives in `accessRoute.test.ts`.
 })

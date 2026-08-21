@@ -293,7 +293,6 @@ describe('completeJob', () => {
             minBand: 'fine',
             minGrade: 'stock',
           },
-          minToolTier: 1,
         },
       ],
       car: customerCar,
@@ -819,7 +818,6 @@ describe('findOrCreateJob (Sprint 11)', () => {
           {
             kind: 'slotCondition',
             requirement: { kind: 'slotCondition', carPartId: 'dampers', minBand: 'fine' },
-            minToolTier: 1,
           },
         ],
         car: customerCar,
@@ -1155,7 +1153,6 @@ describe('repairJobGate (Sprint 26 real cost; Sprint 36: no ownership gate)', ()
         {
           kind: 'slotCondition',
           requirement: { kind: 'slotCondition', carPartId: 'bodywork', minBand: 'fine' },
-          minToolTier: 1,
         },
       ],
       car: customerCar,
@@ -1489,7 +1486,6 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
       {
         kind: 'slotCondition',
         requirement: { kind: 'slotCondition', carPartId: 'aero', minBand: 'fine' },
-        minToolTier: 1,
       },
     ],
     car,

@@ -14,7 +14,7 @@ import { considerToolUpgrade, toolUpgradeBudget } from './toolUpgradeHelpers'
 import { energyMax } from '../laborSlots'
 import type { Rng } from '../rng'
 import { decideSale } from './sellingHelpers'
-import { isServiceWorkDone, toolDeficitSummary } from '../serviceJobs'
+import { isServiceWorkDone, toolGateSummary } from '../serviceJobs'
 import { toolLevelsFor } from '../toolLines'
 import {
   expectedProfitPerLaborSlot,
@@ -243,14 +243,15 @@ export function competentPolicyStrategy(
     }
 
     if (laborBudget > 0 && bayBudget.free > 0) {
-      // Acceptance is gated by tool-tier deficits, not ownership - this
-      // probe only takes offers it can accept outright (zero deficits);
-      // chasing an upgrade-hint offer is serviceGrinder's archetype, not
-      // the competent baseline's.
+      // Acceptance is gated by whether every task is unblocked (no mint
+      // task waiting on a shop this garage doesn't own) - this probe only
+      // takes offers it can accept outright; chasing a blocked offer via a
+      // same-tick upgrade is serviceGrinder's archetype, not the competent
+      // baseline's.
       const offer = state.serviceJobOffers.find(
         (o) =>
-          expectedProfitPerLaborSlot(o, context, state) >= MIN_PROFIT_PER_LABOR_SLOT_YEN &&
-          toolDeficitSummary(o.tasks, toolLevelsFor(state, context), context).maxDeficit === 0,
+          expectedProfitPerLaborSlot(o, context) >= MIN_PROFIT_PER_LABOR_SLOT_YEN &&
+          !toolGateSummary(o.tasks, toolLevelsFor(state, context), context).blocked,
       )
       if (offer) actions.acceptServiceJobs.push({ offerId: offer.id })
     }

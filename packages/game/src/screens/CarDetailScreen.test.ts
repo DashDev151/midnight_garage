@@ -2081,13 +2081,11 @@ describe('CarDetailScreen', () => {
           {
             kind: 'slotCondition',
             requirement: { kind: 'slotCondition', carPartId: 'headValvetrain', minBand: 'fine' },
-            minToolTier: 1,
           },
         ],
         updatedCar,
         model,
         game.context,
-        game.gameState,
       )
 
       const verdictEl = wrapper.find('[data-test="verdict-0"]')

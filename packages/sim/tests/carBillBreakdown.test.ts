@@ -11,9 +11,9 @@ import { valueLedgerFor } from '../src/valueLedger'
 
 /**
  * The two exactness claims the opening block of a value read stands on: the
- * restoration bill really does decompose per slot (and per zone for the body),
- * and a car pinned to the scrap floor really is identifiable, because on one
- * of those every per-slot figure describes arithmetic the car is no longer
+ * restoration bill's PARTS really do decompose per slot (and per zone for the
+ * body), and a car pinned to the scrap floor really is identifiable, because on
+ * one of those every per-slot figure describes arithmetic the car is no longer
  * priced by.
  *
  * Built on `valueLedger.test.ts`'s model: the same roster sweep, the same
@@ -45,6 +45,8 @@ function expectBreakdownSumsToBill(car: CarInstance, modelId: string, label: str
     )
     const where = `${label} to ${targetBand}`
     expect(breakdown.totalYen, `${where}: totalYen`).toBe(billYen)
+    // The lines decompose the whole bill, with nothing sitting beside them: a
+    // whole-car bill is parts and buys no tool-hire day (`carCostToBandYen`).
     expect(
       breakdown.lines.reduce((sum, line) => sum + line.yen, 0),
       `${where}: line sum`,

@@ -31,11 +31,7 @@ export const MIN_PROFIT_PER_LABOR_SLOT_YEN = 3000
  * takes. The bots' accept threshold: accept if this clears
  * `MIN_PROFIT_PER_LABOR_SLOT_YEN`.
  */
-export function expectedProfitPerLaborSlot(
-  offer: ServiceJob,
-  context: SimContext,
-  state: GameState,
-): number {
+export function expectedProfitPerLaborSlot(offer: ServiceJob, context: SimContext): number {
   const model = context.modelsById[offer.car.modelId]
   if (!model) return 0
   // No bot policy attempts a `resolveSymptom` task (`queueServiceJobTasks`
@@ -48,7 +44,6 @@ export function expectedProfitPerLaborSlot(
     offer.car,
     model,
     context,
-    state,
   )
   return (offer.payoutYen - taskCostYen) / Math.max(1, laborSlots)
 }

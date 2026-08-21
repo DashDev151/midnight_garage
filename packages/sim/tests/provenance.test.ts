@@ -202,7 +202,6 @@ describe('close-out parity (Sprint 68 post-fix baseline, reimplemented over orig
             minBand: 'fine',
             minGrade: 'stock',
           },
-          minToolTier: 1,
         },
       ],
       car: customerCar,
@@ -293,7 +292,6 @@ describe('close-out parity (Sprint 68 post-fix baseline, reimplemented over orig
         {
           kind: 'slotCondition',
           requirement: { kind: 'slotCondition', carPartId: 'dampers', minBand: 'fine' },
-          minToolTier: 1,
         },
       ],
       car: customerCar,

@@ -252,22 +252,31 @@ function buildStealLot(context: SimContext): AuctionLot {
 }
 
 /**
- * The trap: a Nissan Sunny (B12) that runs hot in traffic
- * (`overheats-in-traffic`). Its cheapest three causes (a lazy fan switch, a
- * tired radiator, an early head-gasket weep) carry most of the symptom's
- * weight, so the room's odds-priced read comes in comfortably high; the true
- * cause is pinned to `cracked-block`, the one cause in ten the room still has
- * to price in, and by far the dearest - a full block, not a service item.
- * Every part apart from the block reads at its ordinary, undamaged
- * condition, so the room never suspects anything before the visit; only
- * once the doubt narrows all the way down does the estimate crash to the
- * true, dear cause. Against the live content the true value undercuts the
- * room's read by roughly 18% (ratio 0.822), comfortably past both
- * `TRAP_VALUE_FRACTION`'s 90% floor and `VERDICT_BAND_FRACTION`'s 8% bar.
+ * The trap: a Nissan Sunny (B12) that clunks over bumps at the back
+ * (`clunk-over-bumps`). Three of its four causes are suspension service items
+ * (tired bushes, blown dampers, play in the steering) and they carry
+ * three-quarters of the weight between them, so the room's odds-priced read
+ * comes in comfortably high; the true cause is pinned to
+ * `rotted-subframe-mount`, which is not suspension at all but the floor the
+ * suspension bolts to. Every part apart from the chassis reads at its
+ * ordinary, undamaged condition, and the chassis' own paperwork reads
+ * `'fine'`, so the room never suspects anything before the visit; only once
+ * the doubt narrows all the way down does the estimate fall to the truth.
+ *
+ * WHAT MAKES A TRAP IS THE GAP BETWEEN THE VALUE A FAULT DESTROYS AND THE
+ * WORK IT OWES, NEVER THE SIZE OF THE REPAIR BILL. The room deducts a
+ * near-worst-case fix COST from its sheet (`roomSymptomCostYen`, diagnosis.ts);
+ * the player deducts what the fault actually takes off the car. A cause that
+ * is merely dear to fix therefore frightens the room by about what it costs
+ * and leaves almost nothing to discover, however grim it sounds. Rot in the
+ * structure is the opposite: on the live content this one takes 44,572 yen off
+ * the car for 18,200 yen of work, so the true value undercuts the room's read
+ * by roughly 19% (ratio 0.807), comfortably past both `TRAP_VALUE_FRACTION`'s
+ * 90% floor and `VERDICT_BAND_FRACTION`'s 8% bar.
  */
 const TRAP_MODEL_ID = 'nissan-sunny-b12'
-const TRAP_SYMPTOM_ID = 'overheats-in-traffic'
-const TRAP_TRUE_CAUSE_ID = 'cracked-block'
+const TRAP_SYMPTOM_ID = 'clunk-over-bumps'
+const TRAP_TRUE_CAUSE_ID = 'rotted-subframe-mount'
 
 function buildTrapLot(context: SimContext): AuctionLot {
   const model = context.modelsById[TRAP_MODEL_ID]

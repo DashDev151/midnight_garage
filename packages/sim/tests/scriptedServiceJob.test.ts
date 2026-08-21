@@ -19,7 +19,7 @@ import {
   ensureScriptedServiceJob,
   isScriptedServiceJobUnlockClaimed,
 } from '../src/scriptedServiceJob'
-import { resolveAcceptServiceJob, resolveServiceJob, toolDeficitSummary } from '../src/serviceJobs'
+import { resolveAcceptServiceJob, resolveServiceJob, toolGateSummary } from '../src/serviceJobs'
 import { isSellingChannelUnlocked } from '../src/selling'
 import { freshToolLevels } from '../src/toolLines'
 
@@ -51,7 +51,7 @@ function careerWithJobPosted(seed: number): GameState {
 
 describe('buildScriptedServiceJob', () => {
   it('builds the stand owner’s job on the real Acty, carrying the recipe’s fixed fields', () => {
-    const job = buildScriptedServiceJob(CONTEXT, 1, freshCareer(1))
+    const job = buildScriptedServiceJob(CONTEXT, 1)
     expect(job.id).toBe(SCRIPTED_SERVICE_JOB.jobId)
     expect(job.car.modelId).toBe('honda-acty-ha4')
     expect(job.customerName).toBe(SCRIPTED_SERVICE_JOB.customerName)
@@ -65,13 +65,13 @@ describe('buildScriptedServiceJob', () => {
   })
 
   it('is fully deterministic - no RNG draws, byte-identical under repeated calls and across career seeds', () => {
-    const a = buildScriptedServiceJob(CONTEXT, 5, freshCareer(5))
-    const b = buildScriptedServiceJob(CONTEXT, 5, freshCareer(5))
+    const a = buildScriptedServiceJob(CONTEXT, 5)
+    const b = buildScriptedServiceJob(CONTEXT, 5)
     expect(a).toEqual(b)
   })
 
   it('expiresOnDay tracks the day it is built for, per the recipe’s own offer lifetime', () => {
-    const job = buildScriptedServiceJob(CONTEXT, 12, freshCareer(12))
+    const job = buildScriptedServiceJob(CONTEXT, 12)
     expect(job.expiresOnDay).toBe(12 + SCRIPTED_SERVICE_JOB.offerLifetimeDays)
   })
 })
@@ -143,17 +143,17 @@ describe('ensureScriptedServiceJob (deterministic injection, never twice)', () =
 })
 
 describe('day-one completability (sprint205.md task B2)', () => {
-  it('every task clears a fresh, day-one shop’s tool ceiling with zero deficit', () => {
-    const summary = toolDeficitSummary(SCRIPTED_SERVICE_JOB.tasks, freshToolLevels(), CONTEXT)
-    expect(summary.maxDeficit).toBe(0)
-    expect(summary.deficientGroups).toHaveLength(0)
+  it('no task is out of a fresh, day-one shop’s reach', () => {
+    const summary = toolGateSummary(SCRIPTED_SERVICE_JOB.tasks, freshToolLevels(), CONTEXT)
+    expect(summary.blocked).toBe(false)
+    expect(summary.blockedGroups).toHaveLength(0)
   })
 
-  it('every task is authored at minToolTier 1 by construction - no rung above the day-one floor', () => {
+  it('every task asks for a band the bench reaches without a shop - none asks for mint', () => {
     for (const task of SCRIPTED_SERVICE_JOB.tasks) {
       expect(task.kind).toBe('slotCondition')
       if (task.kind !== 'slotCondition') continue
-      expect(task.minToolTier).toBe(1)
+      expect(task.requirement.minBand).not.toBe('mint')
     }
   })
 
@@ -247,7 +247,7 @@ describe('the unlock: freeAdsPaper is shut before delivery, open after, others u
 
 describe('the diagnosis beat (sprint210.md task A3)', () => {
   it('the built car carries exactly one unresolved non-starter symptom, true cause flat-battery', () => {
-    const job = buildScriptedServiceJob(CONTEXT, SCRIPTED_SERVICE_JOB.appearsOnDay, freshCareer(9))
+    const job = buildScriptedServiceJob(CONTEXT, SCRIPTED_SERVICE_JOB.appearsOnDay)
     expect(job.car.symptoms).toHaveLength(1)
     const symptom = job.car.symptoms[0]!
     expect(symptom.symptomId).toBe('non-starter')
@@ -277,7 +277,7 @@ describe('the diagnosis beat (sprint210.md task A3)', () => {
 
 describe('the unlock copy (sprint210.md task A4)', () => {
   it('threads handbackCopy and unlockFacts from the recipe onto the live job, verbatim', () => {
-    const job = buildScriptedServiceJob(CONTEXT, SCRIPTED_SERVICE_JOB.appearsOnDay, freshCareer(11))
+    const job = buildScriptedServiceJob(CONTEXT, SCRIPTED_SERVICE_JOB.appearsOnDay)
     expect(job.handbackCopy).toBe(SCRIPTED_SERVICE_JOB.handbackCopy)
     expect(job.unlockFacts).toEqual(SCRIPTED_SERVICE_JOB.unlockFacts)
   })

@@ -281,7 +281,6 @@ describe('resolveScrapPart (Sprint 26 decision 6; Sprint 35 customer-owned lock)
         {
           kind: 'slotCondition',
           requirement: { kind: 'slotCondition', carPartId: 'bodywork', minBand: 'fine' },
-          minToolTier: 1,
         },
       ],
       car: customerCar,
@@ -345,7 +344,6 @@ describe('resolveSellPart (Sprint 71 decision 6: the teardown game donor economy
         {
           kind: 'slotCondition',
           requirement: { kind: 'slotCondition', carPartId: 'bodywork', minBand: 'fine' },
-          minToolTier: 1,
         },
       ],
       car: customerCar,

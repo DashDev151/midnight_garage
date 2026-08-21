@@ -116,8 +116,8 @@ describe('service jobs in the store', () => {
   it('accepting brings the customer car into the shop instantly, owning nothing', () => {
     const game = useGameStore()
     game.newGame(1)
-    // Nothing gates acceptance at tier 1 - every shipped template defaults to
-    // minToolTier 1, so no tool setup is needed here.
+    // Nothing gates acceptance at tier 1 - no shipped template a fresh board
+    // offers asks for a Restore, so no tool setup is needed here.
     warpToUnfinishedOffer(game)
     const offer = findUnfinishedOffer(game)
     if (!offer) throw new Error('expected an unfinished offer on the board')

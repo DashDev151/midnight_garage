@@ -11,7 +11,7 @@ import type {
   Symptom,
 } from '@midnight-garage/content'
 import { DIAGNOSTIC_TESTS, fitmentClassForTier, titleCaseFromSlug } from '@midnight-garage/content'
-import { bandIndex, planPartRepair } from './bands'
+import { bandIndex } from './bands'
 import { energyMax } from './laborSlots'
 import type { SimContext } from './context'
 import { benchHasTrait, benchedMemberWithTrait } from './crewSkills'
@@ -19,6 +19,7 @@ import { bookCashMovements } from './financeLedger'
 import { findWorkableCar, writeCarBack } from './jobs'
 import { isSlotVerified, verifySlot } from './knowledge'
 import { marketValueYen } from './marketValue'
+import { partFixCostYen } from './repairJobs'
 import type { Rng } from './rng'
 import { taskLaborChain } from './taskLaborChain'
 import { toolLevelsFor } from './toolLines'
@@ -227,28 +228,37 @@ export function expectedTrueValueYen(
   return estimateValueYen(car, model, state, context)
 }
 
+/** The band a symptom's true cause has to reach before the fault counts as
+ * put right (`isSymptomTaskDone`, serviceJobs.ts). A fix is therefore priced
+ * as the job that reaches it, which is a Rebuild - never a Restore the
+ * customer never asked for. */
+const SYMPTOM_RESOLUTION_BAND: ConditionBand = 'fine'
+
 /**
  * The chain-priced cost to fix `cause`'s own damage, reasoned on `apparent`'s
  * own hypothetical view (the part forced to `cause.setBand` - the room's own
  * "if this cause turns out true" reasoning, `symptomDiscountYen`'s
- * `damagedView` construction). Repaired at the bench if the cause doesn't
- * scrap the part and the slot is repairable at all (`planPartRepair` to
- * `mint`, the standard "make it right" target every other repair-cost
- * convention in this codebase already prices to); replaced fresh otherwise
- * (the fitment class's own stock catalogue price). Either way, labour prices
- * through `taskLaborChain` at the real shop `state` describes and
+ * `damagedView` construction). Priced through `partFixCostYen` (repairJobs.ts,
+ * the ONE fix-price atom) at `SYMPTOM_RESOLUTION_BAND`: the smallest job that
+ * puts the fault right, its banded parts bill, and a day's hire only where that
+ * job cannot be worked by hand at all, which on the shipped ladder is a welded
+ * Rebuild and nothing else. A part no job can save is replaced fresh instead,
+ * at the fitment class's own stock catalogue price and no day: fitting a fresh
+ * part works no recipe, so nothing about it forces a machine, and reaching even
+ * a buried slot costs energy rather than yen (`accessRoute`, jobs.ts). A hire
+ * day never reaches a valuation, and the room's own sheet deducts this figure.
+ * Either way, labour prices through `taskLaborChain` at base rate and
  * `economy.serviceJobs.laborRateYen` - the SAME cost pipeline
  * `serviceJobCostBreakdown` (serviceJobs.ts) prices a customer's own quote
  * through, so a candidate's fix cost here and what fixing it would actually
- * cost on the shop floor can never drift apart. Zero when the taxonomy or
- * the installed part can't be resolved (defensive; never happens for real
+ * cost on the shop floor can never drift apart. Zero when the taxonomy row or
+ * the slot itself can't be resolved (defensive; never happens for real
  * content).
  */
 export function candidateFixCostYen(
   apparent: CarInstance,
   model: CarModel,
   cause: Cause,
-  state: GameState,
   context: SimContext,
 ): number {
   const entry = context.partsTaxonomyById[cause.carPartId]
@@ -261,42 +271,21 @@ export function candidateFixCostYen(
       [cause.carPartId]: { installed: { ...installed, band: cause.setBand } },
     },
   }
-  const { repairStepFraction } = context.economy.restoration
-  const { energyPerBandStepByToolTier } = context.economy.energy
   const { laborRateYen } = context.economy.serviceJobs
+  const catalogPart = context.partsById[installed.partId]
+  const fix = catalogPart
+    ? partFixCostYen(entry, catalogPart, cause.setBand, SYMPTOM_RESOLUTION_BAND, context)
+    : null
 
-  if (cause.setBand !== 'scrap' && entry.repairable) {
-    const catalogPart = context.partsById[installed.partId]
-    if (!catalogPart) return 0
-    const plan = planPartRepair(
-      cause.setBand,
-      'mint',
-      1,
-      entry,
-      catalogPart.priceYen,
-      repairStepFraction,
-      energyPerBandStepByToolTier,
-    )
-    const laborSlots = taskLaborChain(
-      damagedView,
-      cause.carPartId,
-      'mint',
-      context,
-      state,
-    ).totalSlots
-    return plan.costYen + laborSlots * laborRateYen
+  if (fix && fix.jobKind !== 'replace') {
+    const laborSlots = taskLaborChain(damagedView, cause.carPartId, fix.jobKind, context).totalSlots
+    return fix.partsYen + fix.hireFeeYen + laborSlots * laborRateYen
   }
 
   const fitmentClass = fitmentClassForTier(model.tier)
   const partCostYen = context.stockPartByCarPartId[fitmentClass]?.[cause.carPartId]?.priceYen ?? 0
-  const laborSlots = taskLaborChain(
-    damagedView,
-    cause.carPartId,
-    'install',
-    context,
-    state,
-  ).totalSlots
-  return partCostYen + laborSlots * laborRateYen
+  const chain = taskLaborChain(damagedView, cause.carPartId, 'install', context)
+  return partCostYen + chain.totalSlots * laborRateYen
 }
 
 /**
@@ -316,7 +305,6 @@ function roomSymptomCostYen(
   apparent: CarInstance,
   model: CarModel,
   causes: readonly Cause[],
-  state: GameState,
   context: SimContext,
 ): number {
   const totalWeight = causes.reduce((sum, cause) => sum + cause.weight, 0)
@@ -324,7 +312,7 @@ function roomSymptomCostYen(
   let maxCost = 0
   let weightedMean = 0
   for (const cause of causes) {
-    const cost = candidateFixCostYen(apparent, model, cause, state, context)
+    const cost = candidateFixCostYen(apparent, model, cause, context)
     if (cost > maxCost) maxCost = cost
     weightedMean += (cause.weight / totalWeight) * cost
   }
@@ -385,7 +373,7 @@ export function sheetGuideValueYen(
     if (carSymptom.latent) continue
     const symptom = context.symptomsById[carSymptom.symptomId]
     if (!symptom) continue
-    discount += roomSymptomCostYen(apparent, model, symptom.causes, state, context)
+    discount += roomSymptomCostYen(apparent, model, symptom.causes, context)
   }
   return apparentValue - discount
 }
@@ -1469,7 +1457,7 @@ export function rollBuyerNotice(
     const chance = carSymptom.latent ? noticeChance * noticeChanceLatentMultiplier : noticeChance
     if (rng.next() >= chance) continue
 
-    deductionYen += candidateFixCostYen(car, model, trueCause, state, context) * noticeMultiplier
+    deductionYen += candidateFixCostYen(car, model, trueCause, context) * noticeMultiplier
     noticeLine ??= noticeCopy.replace('<symptom>', symptom.cardLine)
   }
   return { deductionYen: Math.round(deductionYen), noticeLine }

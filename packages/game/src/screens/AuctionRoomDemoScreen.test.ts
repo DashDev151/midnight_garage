@@ -136,13 +136,14 @@ function testButton(card: DOMWrapper<Element>, testId: string): DOMWrapper<Eleme
   return card.find(`[data-test$="-${testId}"]`)
 }
 
-/** The trap lot's own diagnostic chain, start to finish: `coolant-check`
- * narrows the overheat onto the combustion-breach pair (an early head gasket
- * or a cracked block), then `compression-test` isolates the cracked block
- * alone - the trap's pinned true cause (`auctionRoomDemo.ts`'s own
- * `TRAP_TRUE_CAUSE_ID`) - so the two clicks fully resolve it and the player
- * number becomes the car's real, dear worth rather than the room's read. */
-const TRAP_TEST_CHAIN = ['coolant-check', 'compression-test'] as const
+/** The trap lot's own diagnostic chain, start to finish: `rock-and-listen`
+ * narrows the clunk onto the deep pair (blown dampers, or something
+ * structural letting the subframe move), then `undercarriage-look` isolates
+ * the rotted mount alone - the trap's pinned true cause
+ * (`auctionRoomDemo.ts`'s own `TRAP_TRUE_CAUSE_ID`) - so the two clicks fully
+ * resolve it and the player number becomes the car's real, dear worth rather
+ * than the room's read. */
+const TRAP_TEST_CHAIN = ['rock-and-listen', 'undercarriage-look'] as const
 
 async function resolveTrap(wrapper: VueWrapper): Promise<void> {
   for (const testId of TRAP_TEST_CHAIN) {
@@ -315,8 +316,8 @@ describe('AuctionRoomDemoScreen', () => {
     const wrapper = mountScreen()
     const [, packed] = buildLobby()
     await inspect(wrapper)
-    // The trap's overheating settles on its true, dear cause, and it marks
-    // the estimate down: the room read was the optimistic one.
+    // The trap's clunk settles on its true, dear cause, and it marks the
+    // estimate down: the room read was the optimistic one.
     await resolveTrap(wrapper)
 
     const est = wrapper.find('[data-test="est-value-packed"]')
@@ -423,17 +424,16 @@ describe('AuctionRoomDemoScreen', () => {
     const [, packed] = buildLobby()
     await inspect(wrapper)
     // Resolve the trap to its true, dear worth; by the time the room has
-    // climbed for 30s, every rung on offer already lands past the player's
+    // climbed for 15s, every rung on offer already lands past the player's
     // number, so all three read danger at once - each computed off its own
     // landing price, not one shared switch, which the identical `.classes()`
     // calls below still prove independently even though they agree here. The
-    // climb window widened under the fearful room (knowledge-and-diagnosis.md
-    // section 4): the packed lot's own room read starts lower (nearer the
-    // dear true cause it already fears), so the board needs longer to climb
-    // past the resolved true value than it did against the old plain-average
-    // sheet. A shadow room, seated and ticked the same way the screen's own
-    // room is, supplies the exact mid-climb board value to check the labels
-    // against.
+    // window is mid-climb by construction: the packed room opens on a reserve
+    // well under the resolved true value and hammers well over it, so 15s
+    // lands the board past the number with the lot still live and Endo still
+    // holding a paddle. A shadow room, seated and ticked the same way the
+    // screen's own room is, supplies the exact mid-climb board value to check
+    // the labels against.
     await resolveTrap(wrapper)
     const trueValueYen = estimateAfterTests(packed!, [...TRAP_TEST_CHAIN])
     const learned: Learned = {
@@ -442,10 +442,10 @@ describe('AuctionRoomDemoScreen', () => {
       trueValueYen: packed!.trueValueYen,
       inspected: true,
     }
-    const shadow = roomAfter(packed!, learned, 30_000)
+    const shadow = roomAfter(packed!, learned, 15_000)
 
     await wrapper.find('[data-test="take-seat-packed"]').trigger('click')
-    await advance(30_000)
+    await advance(15_000)
     expect(wrapper.find('[data-test="seat-0"]').text()).toContain('Endo')
 
     const rung1 = nextRungYen(shadow)

@@ -9,12 +9,7 @@ import {
   type EconomyConfig,
   type Part,
 } from '@midnight-garage/content'
-import {
-  carCostToBandYen,
-  carCostToMintYen,
-  clampRepairTarget,
-  repairCeilingForLevel,
-} from './bands'
+import { carCostToBandYen, clampRepairTarget } from './bands'
 import { zonePanelValueYen } from './bodyPipeline'
 import { coherenceFactorForCar } from './derivedStats'
 import { machiningPremiumYenOf } from './machining'
@@ -91,13 +86,23 @@ export function cleanValueYen(
   return bookValueYen * mileageFactor(mileageKm, economy) * (heatPercent / 100)
 }
 
+/** The restoration bill as Stage B spends it. */
+export interface RestorationBillSplit {
+  /** Every slot's outstanding work priced to mint: the plain parts bill, and
+   * the figure the player reads as "restoration bill remaining". */
+  toMintYen: number
+  /** The parts the market expects of this car's tier: what is owed up to the
+   * expectation band. */
+  belowYen: number
+  /** The parts owed between the expectation band and mint. Never negative. */
+  aboveYen: number
+}
+
 /**
  * The restoration-bill deduction (economy-bible.md law 1).
  *
- * The bill is the SAME mint-referenced `carCostToMintYen` the player sees on
- * screen as "restoration bill remaining". The bill SPLITS at the car's tier
- * expectation band (`valuation.expectationByTier`) and discounts the halves
- * at different rates:
+ * The bill SPLITS at the car's tier expectation band
+ * (`valuation.expectationByTier`) and discounts the halves at different rates:
  *
  *   base = cleanValue
  *        - marketRepairDiscount x billBelowExpectation
@@ -110,13 +115,22 @@ export function cleanValueYen(
  * shitbox kei to mint is passion spend, not investment. See the
  * `expectationByTier` schema doc for the full rationale.
  *
+ * BOTH HALVES ARE PARTS, AND NEITHER COUNTS A TOOL-HIRE DAY - the same rule
+ * every whole-car bill obeys (`carCostToBandYen`). That fee exists to pace tool
+ * ownership on the player's own shop floor, and a lever which paces ownership
+ * must not decide what a car is worth. (The labour a fix needs reaches a price
+ * through the symptom discount, which prices its candidates through the same
+ * chain a customer quote does; this walk itself has never priced labour in
+ * yen.) A customer QUOTE still folds its hire in, and correctly so: a job that
+ * needs a hired day has to cover that day before any margin.
+ *
  * Two properties fall out rather than needing clamps:
- * - At `billToMintYen = 0` BOTH halves are zero, so this returns exactly
- *   `cleanValue`. A fully restored car can never be worth more than the
- *   identical clean car.
- * - The halves are `carCostToBandYen(expectation)` and the remainder, both
- *   derived from the one `costToBandYen` atom, so they always sum to the
- *   displayed bill exactly. The split can never invent or lose a yen.
+ * - At `toMintYen = 0` every term is zero, so this returns exactly
+ *   `cleanValue`: a car with nothing outstanding owes nothing, and can never
+ *   be worth more than the identical clean car.
+ * - The bill splits exactly: `belowYen + aboveYen === toMintYen` to the yen at
+ *   every expectation band, because both walks come off the one `costToBandYen`
+ *   atom. The split can never invent or lose a yen.
  *
  * A small backstop floor (scrap-value fraction of clean, the same "pennies
  * on the yen" rate a single scrapped part sells for) guards only against a
@@ -127,6 +141,26 @@ export function cleanValueYen(
  * `cleanValue = cleanValueYen(bookValueYen, mileageKm, heatPercent, economy)` -
  * heat applies exactly once, and car age plays no part in it at all.
  */
+export function restorationBillSplitFor(
+  car: CarInstance,
+  model: CarModel,
+  partsById: Readonly<Record<string, Part>>,
+  partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
+  economy: EconomyConfig,
+): RestorationBillSplit {
+  const expectation = expectationForCar(model, economy)
+  const toMintYen = carCostToBandYen(car, model, partsById, partsTaxonomyById, economy, 'mint')
+  const belowYen = carCostToBandYen(
+    car,
+    model,
+    partsById,
+    partsTaxonomyById,
+    economy,
+    expectation.band,
+  )
+  return { toMintYen, belowYen, aboveYen: toMintYen - belowYen }
+}
+
 /** Stage B's competing figures, before the `Math.max` between them: what the
  * restoration bill leaves of clean value, and the backstop floor under it.
  * Read as a pair by `isOnScrapFloor` below, which is the one question their
@@ -146,23 +180,16 @@ function instanceBaseTerms(
   const cleanValue = cleanValueYen(model.bookValueYen, car.mileageKm, heatPercent, economy)
 
   const expectation = expectationForCar(model, economy)
-  const billToMintYen = carCostToMintYen(car, model, partsById, partsTaxonomyById, economy)
-  const billBelowYen = carCostToBandYen(
-    car,
-    model,
-    partsById,
-    partsTaxonomyById,
-    economy,
-    expectation.band,
-  )
-  const billAboveYen = billToMintYen - billBelowYen
+  const bill = restorationBillSplitFor(car, model, partsById, partsTaxonomyById, economy)
 
   return {
     backstopFloorYen: economy.bands.scrapValueFraction * cleanValue,
     rawYen:
-      cleanValue - marketRepairDiscount * billBelowYen - expectation.beyondDiscount * billAboveYen,
+      cleanValue -
+      marketRepairDiscount * bill.belowYen -
+      expectation.beyondDiscount * bill.aboveYen,
     cleanValue,
-    billBelowYen,
+    billBelowYen: bill.belowYen,
   }
 }
 
@@ -225,17 +252,19 @@ export function expectationForCar(model: CarModel, economy: EconomyConfig) {
 
 /**
  * How far it is worth repairing `model`: the band the market expects of its
- * tier (`expectationForCar`), clamped down to what a fresh shop's tier-1 tools
- * can actually finish (`repairCeilingForLevel`). Every yen spent past the
- * expectation returns only `beyondDiscount` on the yen, so this band is where
- * repair stops paying for itself and passion spend begins; the clamp is a
- * no-op for any tier whose expectation already sits at or below the tier-1
- * ceiling. The one target both "the sensible play" probes plan to.
+ * tier (`expectationForCar`), clamped down to the band a Rebuild finishes at
+ * (`repairJobs.rebuild.target`). Every yen spent past the expectation returns
+ * only `beyondDiscount` on the yen, so this band is where repair stops paying
+ * for itself and passion spend begins; the clamp is what stops the sensible
+ * play planning to a band only a Restore reaches, since a Restore asks for the
+ * covering shop outright rather than a day's hire. A no-op for any tier whose
+ * expectation already sits at or below that band. The one target both "the
+ * sensible play" probes plan to.
  */
 export function sensibleRepairTargetBand(model: CarModel, economy: EconomyConfig): ConditionBand {
   return clampRepairTarget(
     expectationForCar(model, economy).band,
-    repairCeilingForLevel(1, economy),
+    economy.repairJobs.rebuild.target,
   )
 }
 

@@ -1372,24 +1372,39 @@ interface ZoneRepairRoute {
   panelFitted: boolean
   fillerYen: number
   finishYen: number
+  /** The stages the route actually runs, in the order it works them, split by
+   * the carrier that owns each one - the labour half of the same walk the two
+   * money fields price. The split is the money split: metalwork and the fill
+   * are `bodywork`'s, primer/tin/polish are `paint`'s, so no stage is ever
+   * charged to both carriers. Priced by `bodyPartRepairLabourPoints` at
+   * `economy.energy.bodyStagePoints`; the money bills ignore them. */
+  bodyworkStages: PipelineStageId[]
+  paintStages: PipelineStageId[]
 }
 
 /** Metal down to what `targetSeverity` allows, through the stages that
  * actually do it: `beat` walks one rung at a time and `weld` clears the lot.
- * Both cost labour and never yen, so this moves the zone and never the money. */
-function straightenMetal(zone: MetalZoneState, targetSeverity: number): MetalZoneState {
+ * Both cost labour and never yen, so this moves the zone and the stage list
+ * and never the money. */
+function straightenMetal(
+  zone: MetalZoneState,
+  targetSeverity: number,
+): { zone: MetalZoneState; stages: PipelineStageId[] } {
   let current = zone
+  const stages: PipelineStageId[] = []
   while (current.metal > targetSeverity) {
     const beat = planMetalPipelineStage('beat', current)
     if (beat.ok) {
       current = beat.zone as MetalZoneState
+      stages.push('beat')
       continue
     }
     const weld = planMetalPipelineStage('weld', current)
     if (!weld.ok) break
     current = weld.zone as MetalZoneState
+    stages.push('weld')
   }
-  return current
+  return { zone: current, stages }
 }
 
 /** The prime-paint-polish chain toward `targetSeverity`'s finish, shared by
@@ -1403,20 +1418,23 @@ function straightenMetal(zone: MetalZoneState, targetSeverity: number): MetalZon
 function repaintChain(
   zone: ZoneState,
   targetSeverity: number,
-): { zone: ZoneState; finishYen: number } {
+): { zone: ZoneState; finishYen: number; stages: PipelineStageId[] } {
   let current = zone
   let finishYen = 0
+  const stages: PipelineStageId[] = []
   const needsRepaint = current.finish > targetSeverity && current.finish >= BARE_FINISH
   if (needsRepaint) {
     const prime = planSharedPipelineStage('prime', current, BILL_CAPABILITY)
     if (prime.ok) {
       current = prime.zone
       finishYen += prime.materialsCostYen
+      stages.push('prime')
     }
     const paint = planPaintStage(current, current.colour ?? '', BILL_CAPABILITY, 'street', '')
     if (paint.ok) {
       current = { ...paint.zone, colour: current.colour }
       finishYen += paint.materialsCostYen
+      stages.push('paint')
     }
   }
   while (current.finish > targetSeverity) {
@@ -1424,8 +1442,9 @@ function repaintChain(
     if (!polish.ok) break
     current = polish.zone
     finishYen += polish.materialsCostYen
+    stages.push('polish')
   }
-  return { zone: current, finishYen }
+  return { zone: current, finishYen, stages }
 }
 
 /**
@@ -1476,22 +1495,31 @@ function planMetalZoneRepair(zone: MetalZoneState, targetSeverity: number): Zone
     metalWorkOwed || (current.finish > targetSeverity && current.finish >= BARE_FINISH)
   const needsFill = current.surface > 0 && (repaintOwed || current.surface > targetSeverity)
 
-  current = straightenMetal(current, needsFill ? 0 : targetSeverity)
+  const straightened = straightenMetal(current, needsFill ? 0 : targetSeverity)
+  current = straightened.zone
+  const bodyworkStages = straightened.stages
 
   if (needsFill) {
     const fill = planMetalPipelineStage('fillAndSand', current)
     if (fill.ok) {
       current = fill.zone as MetalZoneState
       fillerYen += fill.materialsCostYen
+      bodyworkStages.push('fillAndSand')
     }
   }
 
-  const { zone: paintedZone, finishYen } = repaintChain(current, targetSeverity)
+  const {
+    zone: paintedZone,
+    finishYen,
+    stages: paintStages,
+  } = repaintChain(current, targetSeverity)
   return {
     zone: paintedZone as MetalZoneState,
     panelFitted,
     fillerYen,
     finishYen,
+    bodyworkStages,
+    paintStages,
   }
 }
 
@@ -1505,8 +1533,15 @@ function planTrimZoneRepair(zone: ZoneState, targetSeverity: number): ZoneRepair
     current = planInstallPanel(current, 'mint')
     panelFitted = true
   }
-  const { zone: paintedZone, finishYen } = repaintChain(current, targetSeverity)
-  return { zone: paintedZone, panelFitted, fillerYen: 0, finishYen }
+  const { zone: paintedZone, finishYen, stages } = repaintChain(current, targetSeverity)
+  return {
+    zone: paintedZone,
+    panelFitted,
+    fillerYen: 0,
+    finishYen,
+    bodyworkStages: [],
+    paintStages: stages,
+  }
 }
 
 /**
@@ -1517,7 +1552,14 @@ function planTrimZoneRepair(zone: ZoneState, targetSeverity: number): ZoneRepair
  */
 function planZoneRepair(zone: ZoneState, targetSeverity: number): ZoneRepairRoute {
   if (targetSeverity >= BEYOND_REPAIR_METAL) {
-    return { zone, panelFitted: false, fillerYen: 0, finishYen: 0 }
+    return {
+      zone,
+      panelFitted: false,
+      fillerYen: 0,
+      finishYen: 0,
+      bodyworkStages: [],
+      paintStages: [],
+    }
   }
   return isMetalZoneState(zone)
     ? planMetalZoneRepair(zone, targetSeverity)
@@ -1629,6 +1671,41 @@ export function bodyPartRepairBillYen(
   return sumZoneBill(
     bodyPartRepairBillByZoneYen(carPartId, zoneStates, targetBand, fitmentClass, partsById),
   )
+}
+
+/**
+ * `bodyPartRepairBillYen`'s LABOUR sibling: what reaching `targetBand` on this
+ * carrier costs in energy points, as the stages the same nine-zone walk would
+ * actually run, each at its flat `economy.energy.bodyStagePoints` figure - the
+ * rate `pipelineActions.ts` charges a player working that stage in the body
+ * bay, so a quote and the shop floor price one piece of work rather than two.
+ *
+ * A sibling and not a second opinion: both halves come off `planZoneRepair`,
+ * so what a carrier's money buys and what its labour works can never disagree
+ * about which stages the car needs. The carrier split is the money split -
+ * beating, welding and the fill are `bodywork`'s, primer, the tin and polish
+ * are `paint`'s - so a car owing both metalwork and a respray never pays for
+ * the same stage twice across the two carriers.
+ *
+ * Points, never yen, like every other labour figure in the sim; a caller
+ * pricing labour at a market rate divides by `energy.pointsPerLabour` itself.
+ * Hanging a fresh panel is not a stage and is not counted here: the panel is a
+ * purchase, and `bodyworkRepairBillByZoneYen` already carries its price.
+ */
+export function bodyPartRepairLabourPoints(
+  carPartId: DerivedBodyPartId,
+  zoneStates: ZoneStates,
+  targetBand: ConditionBand,
+  bodyStagePoints: Readonly<Record<PipelineStageId, number>>,
+): number {
+  const targetSeverity = severityThresholdForBand(targetBand)
+  let points = 0
+  for (const zoneId of PANEL_ZONE_IDS) {
+    const route = planZoneRepair(zoneStates[zoneId], targetSeverity)
+    const stages = carPartId === 'bodywork' ? route.bodyworkStages : route.paintStages
+    for (const stage of stages) points += bodyStagePoints[stage]
+  }
+  return points
 }
 
 /** `bodyPartRepairBillYen` unsummed - the same nine zone lines it adds up, for

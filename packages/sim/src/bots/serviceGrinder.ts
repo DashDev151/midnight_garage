@@ -1,10 +1,10 @@
-import type { ComponentId, GameState, ServiceJob } from '@midnight-garage/content'
+import type { GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
 import { considerToolUpgrade, toolUpgradeBudget } from './toolUpgradeHelpers'
 import { energyMax } from '../laborSlots'
-import { isServiceWorkDone, taskToolDeficit, toolDeficitSummary } from '../serviceJobs'
+import { isServiceWorkDone, toolGateSummary } from '../serviceJobs'
 import { toolLevelsFor } from '../toolLines'
 import {
   expectedProfitPerLaborSlot,
@@ -21,27 +21,6 @@ const CASH_BUFFER_MULTIPLIER = 1.1
  * draw on cash beyond parts. */
 const TOOL_UPGRADE_CASH_BUFFER_MULTIPLIER = 1.5
 
-/** The group of the largest-deficit task on `offer` - what this bot
- * upgrades toward before accepting. Null when nothing is deficient. */
-function largestDeficitGroup(
-  offer: ServiceJob,
-  state: GameState,
-  context: SimContext,
-): ComponentId | null {
-  let best: ComponentId | null = null
-  let bestDeficit = 0
-  for (const task of offer.tasks) {
-    if (task.kind !== 'slotCondition') continue
-    const deficit = taskToolDeficit(task, toolLevelsFor(state, context), context)
-    if (deficit <= bestDeficit) continue
-    const group = context.partsTaxonomyById[task.requirement.carPartId]?.group
-    if (!group) continue
-    best = group
-    bestDeficit = deficit
-  }
-  return best
-}
-
 /**
  * Takes service jobs and actually works them - the player-hands version of
  * the Act 1 floor (never buys a car, never speculatively buys parts
@@ -54,9 +33,9 @@ function largestDeficitGroup(
  * Exists so the balance harness can check that a broke player can survive
  * on jobs alone.
  *
- * Acceptance rule: an offer with zero tool-tier deficits is accepted
- * outright; an upgrade-hint offer (exactly one line, one tier short)
- * triggers a same-tick `considerToolUpgrade` toward its largest-deficit
+ * Acceptance rule: an offer with no blocked task is accepted outright; a
+ * blocked offer (some task needs a shop this garage doesn't own yet)
+ * triggers a same-tick `considerToolUpgrade` toward its first blocked
  * task's group - upgrades resolve before accepts in advanceDay's step
  * order, so a buffered upgrade really does unlock the same-tick accept.
  * Ignores the `rng` arg of BotStrategy (fewer params satisfies the type).
@@ -99,20 +78,19 @@ export function serviceGrinderStrategy(state: GameState, context: SimContext): D
 
   // Spare labor and an empty bay (after this tick's moves)? Bring the next
   // profitable car into the shop - it moves into the bay and starts work
-  // from the following day, once it's actually a real active job. An offer
-  // with zero deficits is accepted outright; a one-tier-short upgrade-hint
-  // offer is accepted only when the upgrade itself gets queued this same
-  // tick (it resolves before the accept in advanceDay's order) - otherwise
-  // the bot looks at the next profitable offer rather than wasting the day
-  // on one it can't take yet.
+  // from the following day, once it's actually a real active job. An
+  // unblocked offer is accepted outright; a blocked-on-a-shop offer is
+  // accepted only when the upgrade itself gets queued this same tick (it
+  // resolves before the accept in advanceDay's order) - otherwise the bot
+  // looks at the next profitable offer rather than wasting the day on one
+  // it can't take yet.
   if (laborBudget > 0 && bayBudget.free > 0) {
     for (const offer of state.serviceJobOffers) {
-      if (expectedProfitPerLaborSlot(offer, context, state) < MIN_PROFIT_PER_LABOR_SLOT_YEN)
-        continue
-      let canAcceptNow =
-        toolDeficitSummary(offer.tasks, toolLevelsFor(state, context), context).maxDeficit === 0
+      if (expectedProfitPerLaborSlot(offer, context) < MIN_PROFIT_PER_LABOR_SLOT_YEN) continue
+      const gate = toolGateSummary(offer.tasks, toolLevelsFor(state, context), context)
+      let canAcceptNow = !gate.blocked
       if (!canAcceptNow) {
-        const group = largestDeficitGroup(offer, state, context)
+        const group = gate.blockedGroups[0]
         if (group) {
           canAcceptNow = considerToolUpgrade(
             state,

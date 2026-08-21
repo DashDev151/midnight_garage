@@ -657,22 +657,6 @@ export function machineLaborMultiplier(
 }
 
 /**
- * The day-hire fee a REPAIR-gated heavy op would cost a shop that does not own
- * that group's tier-2 machine, or 0 once it does. A quoted figure only: nothing
- * charges it per operation, because access is bought by the day
- * (`resolveHireToolLine`) or paid in energy.
- */
-export function signatureOpFeeYen(
-  carPartId: CarPartId,
-  state: GameState,
-  context: SimContext,
-): number {
-  const group = machineGateGroupFor(carPartId, 'repair', context)
-  if (!group || ownsMachineForGroup(group, state, context)) return 0
-  return context.economy.toolHire.feeYenByGroup[group]
-}
-
-/**
  * The machine group a new repair-zone job's labour rate is priced against, or
  * null when the job is ungated. A per-part repair reads that slot's repair
  * gate; a group-level repair counts as gated when ANY slot in the group gates

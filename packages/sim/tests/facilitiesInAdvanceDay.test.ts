@@ -203,7 +203,7 @@ describe('acquisitions require a free parking space at delivery, never at biddin
   it('accepting a service job is skipped (offer stays) only once parking, every service bay, AND the grace slot are all full (Sprint 45)', () => {
     const base = createInitialGameState(CONTEXT, 1)
     // No equipment/tool gate can interfere here - every line is owned at
-    // tier 1 and all shipped templates default to minToolTier 1, so this
+    // tier 1 and no shipped template a fresh board offers asks for a Restore, so this
     // test is purely about capacity.
     const full = {
       ...base,

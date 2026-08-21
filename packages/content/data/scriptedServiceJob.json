@@ -22,12 +22,10 @@
   ],
   "tasks": [
     {
-      "requirement": { "kind": "slotCondition", "carPartId": "ignitionEcu", "minBand": "fine" },
-      "minToolTier": 1
+      "requirement": { "kind": "slotCondition", "carPartId": "ignitionEcu", "minBand": "fine" }
     },
     {
-      "requirement": { "kind": "slotCondition", "carPartId": "fuelSystem", "minBand": "fine" },
-      "minToolTier": 1
+      "requirement": { "kind": "slotCondition", "carPartId": "fuelSystem", "minBand": "fine" }
     }
   ],
   "baseReputation": 4,

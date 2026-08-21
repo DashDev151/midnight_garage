@@ -58,7 +58,6 @@ function finishJobAwaitingHandback(game: ReturnType<typeof useGameStore>): strin
                   carPartId: 'bodywork' as const,
                   minBand: band,
                 },
-                minToolTier: 1 as const,
               },
             ],
           }

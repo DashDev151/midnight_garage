@@ -10,6 +10,7 @@ import {
   SERVICE_JOB_TYPES,
   type CarInstance,
   type CarPartId,
+  type ConditionBand,
   type GameState,
   type Job,
   type Part,
@@ -24,6 +25,7 @@ import { DayActionsSchema } from '../src/actions'
 import { advanceDay } from '../src/advanceDay'
 import { generateAuctionCarInstance } from '../src/auctions'
 import { bandIndex } from '../src/bands'
+import { METAL_ZONE_IDS, uniformZoneStates } from '../src/bodyPipeline'
 import { SERVICE_JOB_ARRIVAL_DELAY_DAYS } from '../src/constants'
 import { buildSimContext } from '../src/context'
 import { resolveRemovePart } from '../src/jobs'
@@ -44,7 +46,7 @@ import {
   resolveServiceJobArrivals,
   serviceJobCostBreakdown,
   isTemplateOfferable,
-  toolDeficitSummary,
+  toolGateSummary,
   upgradeHintFor,
 } from '../src/serviceJobs'
 import {
@@ -128,10 +130,17 @@ function partInstance(partId: string): PartInstance {
   }
 }
 
-/** A template's tasks with every `minToolTier` raised to `tier` - the test
- * knob for exercising the tool-tier accept gate. */
-function raiseMinToolTier(type: ServiceJobType, tier: 2 | 3): ServiceJobType['tasks'] {
-  return type.tasks.map((task) => ({ ...task, minToolTier: tier }))
+/** A template's tasks with every band requirement set to `band` and any grade
+ * requirement dropped - the test knob for the tool gate, since the band is now
+ * the whole of it: only `mint` asks for a Restore, and only a Restore asks for
+ * the covering shop. */
+function requireBandRepair(type: ServiceJobType, band: ConditionBand): ServiceJobType['tasks'] {
+  return type.tasks.map((task) => {
+    if (task.kind !== 'slotCondition') return task
+    const requirement = { ...task.requirement }
+    delete requirement.minGrade
+    return { ...task, requirement: { ...requirement, minBand: band } }
+  })
 }
 
 /** A catalog part addressed to `carPartId`, optionally filtered further -
@@ -367,15 +376,15 @@ describe('service-job template tier gating (Sprint 29 decision 2)', () => {
 })
 
 describe('the Sprint 36 offer rule, re-asserted against Sprint 37 real content', () => {
-  it('across 300 fresh seeds every offer has max deficit <= 1 and at most one deficient group', () => {
+  it('across 300 fresh seeds no offer is out of a day-one shop reach', () => {
     let sawAnyOffer = false
     for (let seed = 1; seed <= 300; seed++) {
       const state = createInitialGameState(CONTEXT, seed)
       for (const offer of state.serviceJobOffers) {
         sawAnyOffer = true
-        const summary = toolDeficitSummary(offer.tasks, state.toolTiers, CONTEXT)
-        expect(summary.maxDeficit).toBeLessThanOrEqual(1)
-        expect(summary.deficientGroups.length).toBeLessThanOrEqual(1)
+        const summary = toolGateSummary(offer.tasks, state.toolTiers, CONTEXT)
+        expect(summary.blocked).toBe(false)
+        expect(summary.blockedGroups).toHaveLength(0)
       }
     }
     expect(sawAnyOffer).toBe(true) // sanity: the board isn't just always empty
@@ -427,34 +436,61 @@ describe('the Sprint 36 offer rule, re-asserted against Sprint 37 real content',
     }
   })
 
-  it('one tier out in one group is offerable (an upgrade-hint offer); two tiers out, or two deficient groups, is not', () => {
-    // singleRepairType stays within one group (body); mixedType
-    // (put-her-in-a-ditch) spans three (body/suspension/wheels), covering
-    // the "more than one deficient group" case.
-    const oneGroupOneTier = singleRepairType.tasks.map((task) => ({
-      ...task,
-      minToolTier: 2 as const,
-    }))
-    expect(isTemplateOfferable(oneGroupOneTier, testToolTiers(), CONTEXT)).toBe(true)
-    expect(upgradeHintFor(oneGroupOneTier, testToolTiers(), CONTEXT)).toBe(
-      `needs ${CONTEXT.toolLines.body.tiers[1]!.displayName}`,
+  it('a worn or fine repair is always offerable; a mint one waits for the covering shop', () => {
+    // singleRepairType (small-bodywork-touchup) asks bodywork to fine, on the
+    // body line - a day-one shop is offered it and hires or slogs the rest.
+    expect(isTemplateOfferable(singleRepairType.tasks, testToolTiers(), CONTEXT)).toBe(true)
+    expect(upgradeHintFor(singleRepairType.tasks, testToolTiers(), CONTEXT)).toBeNull()
+
+    // A Service (worn) never has a gate either: no band below mint does.
+    const wornRepair = requireBandRepair(singleRepairType, 'worn')
+    expect(isTemplateOfferable(wornRepair, testToolTiers(), CONTEXT)).toBe(true)
+    expect(upgradeHintFor(wornRepair, testToolTiers(), CONTEXT)).toBeNull()
+
+    const mintRepair = requireBandRepair(singleRepairType, 'mint')
+    expect(isTemplateOfferable(mintRepair, testToolTiers(), CONTEXT)).toBe(false)
+    expect(upgradeHintFor(mintRepair, testToolTiers(), CONTEXT)).toBe(
+      `needs ${CONTEXT.toolShopByGroup.body.displayName}`,
+    )
+    // A tier-2 rung is not a shop, so it opens no Restore.
+    expect(isTemplateOfferable(mintRepair, testToolLevels({ body: 2 }), CONTEXT)).toBe(false)
+    // The covering shop does, and the hint goes with it.
+    expect(isTemplateOfferable(mintRepair, testToolLevels({ body: 3 }), CONTEXT)).toBe(true)
+    expect(upgradeHintFor(mintRepair, testToolLevels({ body: 3 }), CONTEXT)).toBeNull()
+  })
+
+  it('the gate names every group a Restore is asked on, and only those', () => {
+    // full-restoration, as real content authors it: block to fine, paint to
+    // mint, seats to mint, rims bought at street. Only the two mint repairs
+    // gate it, on their own two lines - the fine repair and the purchase are
+    // day-one work and contribute nothing.
+    const restoration = findType('full-restoration')
+    const summary = toolGateSummary(restoration.tasks, testToolTiers(), CONTEXT)
+    expect(summary.blocked).toBe(true)
+    expect([...summary.blockedGroups].sort()).toEqual(['body', 'interior'])
+
+    // One shop lands: the other line still names itself, and still refuses.
+    const half = toolGateSummary(restoration.tasks, testToolLevels({ body: 3 }), CONTEXT)
+    expect(half.blockedGroups).toEqual(['interior'])
+    expect(upgradeHintFor(restoration.tasks, testToolLevels({ body: 3 }), CONTEXT)).toBe(
+      `needs ${CONTEXT.toolShopByGroup.interior.displayName}`,
     )
 
-    const oneGroupTwoTiers = singleRepairType.tasks.map((task) => ({
-      ...task,
-      minToolTier: 3 as const,
-    }))
-    expect(isTemplateOfferable(oneGroupTwoTiers, testToolTiers(), CONTEXT)).toBe(false)
+    // Both shops open it outright.
+    const covered = testToolLevels({ body: 3, interior: 3 })
+    expect(toolGateSummary(restoration.tasks, covered, CONTEXT).blockedGroups).toEqual([])
+    expect(isTemplateOfferable(restoration.tasks, covered, CONTEXT)).toBe(true)
+  })
 
-    const twoGroupsOneTier = mixedType.tasks.map((task) => ({
-      ...task,
-      minToolTier: 2 as const,
-    }))
-    expect(isTemplateOfferable(twoGroupsOneTier, testToolTiers(), CONTEXT)).toBe(false)
-
-    // The deficit clears (and the hint disappears) once the line is upgraded.
-    expect(isTemplateOfferable(oneGroupTwoTiers, testToolLevels({ body: 3 }), CONTEXT)).toBe(true)
-    expect(upgradeHintFor(oneGroupOneTier, testToolLevels({ body: 2 }), CONTEXT)).toBeNull()
+  it('a mint task carrying a grade requirement is offerable at any tier - it buys a part rather than working one', () => {
+    // installType (coilover-install) buys street dampers; asking for them at
+    // mint still buys them, so no shop stands between the player and the job.
+    const mintInstall = installType.tasks.map((task) => {
+      if (task.kind !== 'slotCondition') return task
+      return { ...task, requirement: { ...task.requirement, minBand: 'mint' as const } }
+    })
+    expect(isTemplateOfferable(mintInstall, testToolTiers(), CONTEXT)).toBe(true)
+    expect(upgradeHintFor(mintInstall, testToolTiers(), CONTEXT)).toBeNull()
   })
 })
 
@@ -564,45 +600,40 @@ describe('serviceJobCostBreakdown / deriveServiceJobPayoutYen (Sprint 29 decisio
   it('a repair task on an already-mint part contributes nothing to cost or labor', () => {
     const car = buildCarInstance({ parts: mintCarParts() })
     const model = CARS[0]!
-    const breakdown = serviceJobCostBreakdown(
-      singleRepairType.tasks,
-      car,
-      model,
-      CONTEXT,
-      FRESH_STATE,
-    )
+    const breakdown = serviceJobCostBreakdown(singleRepairType.tasks, car, model, CONTEXT)
     expect(breakdown.taskCostYen).toBe(0)
     expect(breakdown.laborSlots).toBe(0)
   })
 
-  it("a repair task charges banded-steps cost, derived from the installed instance's own catalog price (Sprint 44), proportional to how far the part is from target", () => {
-    const car = buildCarInstance({ parts: mintCarParts({ bodywork: 'poor' }) })
+  it("a repair task on a body carrier charges banded-steps cost off the installed instance's own catalog price (Sprint 44), and its labour as the body pipeline's own stages", () => {
+    const car = buildCarInstance({
+      parts: mintCarParts({ bodywork: 'poor' }),
+      zoneState: uniformZoneStates('poor', 'white'),
+    })
     const model = CARS[0]! // honda-city-e-aa
-    const breakdown = serviceJobCostBreakdown(
-      singleRepairType.tasks,
-      car,
-      model,
-      CONTEXT,
-      FRESH_STATE,
-    )
+    const breakdown = serviceJobCostBreakdown(singleRepairType.tasks, car, model, CONTEXT)
     const installedPartId = car.parts.bodywork.installed!.partId
     const priceYen = CONTEXT.partsById[installedPartId]!.priceYen
     const { repairStepFraction } = CONTEXT.economy.restoration
     // poor -> fine is 2 grades (poor, worn, fine order: poor < worn < fine).
     expect(breakdown.taskCostYen).toBe(Math.round(2 * repairStepFraction * priceYen))
-    expect(breakdown.laborSlots).toBeGreaterThan(0)
+    // `bodywork` has no bench recipe - the pipeline works it in STAGES - so its
+    // labour is the stage walk `bodyPartRepairLabourPoints` prices, not a step
+    // count. Every metal zone here sits at `poor`: metal past beating, so one
+    // weld clears it, and a surface to level, so one fill follows. The three
+    // trim zones carry no metal at all and so owe `bodywork` nothing; their
+    // finish is `paint`'s side of the same walk.
+    const { bodyStagePoints, pointsPerLabour } = CONTEXT.economy.energy
+    const perMetalZonePoints = bodyStagePoints.weld + bodyStagePoints.fillAndSand
+    expect(breakdown.laborSlots).toBe(
+      (METAL_ZONE_IDS.length * perMetalZonePoints) / pointsPerLabour,
+    )
   })
 
   it('a band-only task on a scrap part now prices a replacement (unrepairable, but no longer "already done")', () => {
     const car = buildCarInstance({ parts: mintCarParts({ bodywork: 'scrap' }) })
     const model = CARS[0]!
-    const breakdown = serviceJobCostBreakdown(
-      singleRepairType.tasks,
-      car,
-      model,
-      CONTEXT,
-      FRESH_STATE,
-    )
+    const breakdown = serviceJobCostBreakdown(singleRepairType.tasks, car, model, CONTEXT)
     expect(breakdown.taskCostYen).toBeGreaterThan(0)
     // 'bodywork' is a fixed body carrier (`removable: false`) of the SURFACE
     // depth class: it never leaves the car, so there is no blocker/removal/
@@ -614,13 +645,7 @@ describe('serviceJobCostBreakdown / deriveServiceJobPayoutYen (Sprint 29 decisio
   it('a band-only task on a missing (empty) slot now prices a replacement too - same treatment as scrap', () => {
     const car = buildCarInstance({ parts: mintCarParts({ bodywork: null }) })
     const model = CARS[0]!
-    const breakdown = serviceJobCostBreakdown(
-      singleRepairType.tasks,
-      car,
-      model,
-      CONTEXT,
-      FRESH_STATE,
-    )
+    const breakdown = serviceJobCostBreakdown(singleRepairType.tasks, car, model, CONTEXT)
     expect(breakdown.taskCostYen).toBeGreaterThan(0)
     // Same fixed-carrier reasoning as the scrap case above.
     expect(breakdown.laborSlots).toBe(0)
@@ -629,7 +654,7 @@ describe('serviceJobCostBreakdown / deriveServiceJobPayoutYen (Sprint 29 decisio
   it('an install task prices off the median fitting-part cost at (or above) minGrade', () => {
     const car = buildCarInstance({ parts: mintCarParts() })
     const model = CARS[0]!
-    const breakdown = serviceJobCostBreakdown(installType.tasks, car, model, CONTEXT, FRESH_STATE)
+    const breakdown = serviceJobCostBreakdown(installType.tasks, car, model, CONTEXT)
     expect(breakdown.taskCostYen).toBeGreaterThan(0)
     expect(breakdown.laborSlots).toBeGreaterThan(0)
   })
@@ -637,22 +662,8 @@ describe('serviceJobCostBreakdown / deriveServiceJobPayoutYen (Sprint 29 decisio
   it('a higher margin roll yields a strictly higher payout for the same tasks/car', () => {
     const car = buildCarInstance({ parts: mintCarParts({ bodywork: 'poor' }) })
     const model = CARS[0]!
-    const low = deriveServiceJobPayoutYen(
-      singleRepairType.tasks,
-      car,
-      model,
-      CONTEXT,
-      FRESH_STATE,
-      1.2,
-    )
-    const high = deriveServiceJobPayoutYen(
-      singleRepairType.tasks,
-      car,
-      model,
-      CONTEXT,
-      FRESH_STATE,
-      1.45,
-    )
+    const low = deriveServiceJobPayoutYen(singleRepairType.tasks, car, model, CONTEXT, 1.2)
+    const high = deriveServiceJobPayoutYen(singleRepairType.tasks, car, model, CONTEXT, 1.45)
     expect(high).toBeGreaterThan(low)
   })
 })
@@ -1248,7 +1259,7 @@ describe('the signature gate: requiresOperationId only, offer generation and acc
   }
 
   // race-prep-job: requiresOperationId race-prep (dampers -> suspension line),
-  // every task minToolTier 2 or 3 - every rung at 2 with every shop owned
+  // whose dampers task asks for mint - every rung at 2 with every shop owned
   // clears both the task-tool gate and the operation's own gate at once
   // (owning the shop lifts every line it covers to level 3 regardless of
   // its own rung, `toolLevelsFor`).
@@ -1322,7 +1333,9 @@ describe('the signature gate: requiresOperationId only, offer generation and acc
     const template = SERVICE_JOB_TYPES.find((t) => t.id === 'race-prep-job')!
     const offer = { ...activeJob(template), dueOnDay: null }
     // Every shop but the one covering the operation's own suspension line,
-    // so the task-tool gate passes and only the operation gate refuses.
+    // so the task-tool gate passes and only the operation gate refuses. Its
+    // dampers task asks for mint but BUYS a sport part to get there, which is
+    // never shop work, so no task here is gated on the missing shop.
     const state = {
       ...createInitialGameState(context, 1),
       toolTiers: READY_TIERS,
@@ -1334,7 +1347,7 @@ describe('the signature gate: requiresOperationId only, offer generation and acc
     const result = resolveAcceptServiceJob(state, offer.id, context)
     expect(result.state.activeServiceJobs).toHaveLength(0)
     expect(result.log).toEqual([
-      { type: 'acquisition-blocked', kind: 'service-accept', reason: 'tool-tier' },
+      { type: 'acquisition-blocked', kind: 'service-accept', reason: 'operation' },
     ])
   })
 
@@ -1450,8 +1463,19 @@ describe('resolveAcceptServiceJob (Sprint 11 instant resolver, Sprint 29 multi-t
     ])
   })
 
-  it("refuses (reason 'tool-tier') while a task's minToolTier exceeds the line's tier, and accepts once upgraded", () => {
-    const template = { ...twoRepairType, tasks: raiseMinToolTier(twoRepairType, 2) }
+  it('accepts a worn-target repair job on a fresh game - no band below mint is ever gated', () => {
+    const template = { ...twoRepairType, tasks: requireBandRepair(twoRepairType, 'worn') }
+    const offer = { ...activeJob(template), tasks: template.tasks, dueOnDay: null }
+    const state = {
+      ...createInitialGameState(CONTEXT, 1),
+      serviceJobOffers: [offer],
+    }
+    const result = resolveAcceptServiceJob(state, offer.id, CONTEXT)
+    expect(result.state.activeServiceJobs).toHaveLength(1)
+  })
+
+  it("refuses (reason 'tool-tier') while a task asks for a Restore with no covering shop, and accepts once the shop lands", () => {
+    const template = { ...twoRepairType, tasks: requireBandRepair(twoRepairType, 'mint') }
     const offer = { ...activeJob(template), tasks: template.tasks, dueOnDay: null }
     const state = {
       ...createInitialGameState(CONTEXT, 1),
@@ -1467,16 +1491,16 @@ describe('resolveAcceptServiceJob (Sprint 11 instant resolver, Sprint 29 multi-t
     const upgraded = {
       ...state,
       // twoRepairType is single-group: both its tasks live in suspension, so
-      // upgrading that one line clears the deficit.
-      toolTiers: testToolTiers({ suspension: 2 }),
+      // the one shop covering that line opens both.
+      toolShopsOwned: testToolShopsOwned('suspension'),
     }
     const accepted = resolveAcceptServiceJob(upgraded, offer.id, CONTEXT)
     expect(accepted.state.activeServiceJobs).toHaveLength(1)
   })
 
-  it('accepts a fresh-game (all-tier-1) offer outright when every task is minToolTier 1', () => {
-    // installType is a real tier-1 template: every task's minToolTier is 1,
-    // so a brand-new shop has zero deficits and accept succeeds immediately.
+  it('accepts a fresh-game offer outright when no task asks for a Restore', () => {
+    // installType is a real tier-1 template: it buys a part and asks for fine,
+    // so a brand-new shop is never blocked and accept succeeds immediately.
     const offer = { ...activeJob(installType), dueOnDay: null }
     const state = {
       ...createInitialGameState(CONTEXT, 1),
@@ -1486,10 +1510,11 @@ describe('resolveAcceptServiceJob (Sprint 11 instant resolver, Sprint 29 multi-t
     expect(result.state.activeServiceJobs).toHaveLength(1)
   })
 
-  it("refuses a fresh-game offer whose real content minToolTier exceeds tier 1 (reason 'tool-tier')", () => {
-    // mixedType is a real tier-2 template: its repair tasks are minToolTier
-    // 2, so a brand-new shop can't accept it yet.
-    const offer = { ...activeJob(mixedType), dueOnDay: null }
+  it("refuses a fresh-game offer asking for real content's Restore work (reason 'tool-tier')", () => {
+    // full-respray asks paint to mint, which is Restore work: a brand-new shop
+    // has no body shop, so it cannot accept it yet.
+    const respray = findType('full-respray')
+    const offer = { ...activeJob(respray), tasks: respray.tasks, dueOnDay: null }
     const state = {
       ...createInitialGameState(CONTEXT, 1),
       serviceJobOffers: [offer],

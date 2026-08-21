@@ -64,7 +64,6 @@ function serviceCar(id: string): ServiceJob {
       {
         kind: 'slotCondition',
         requirement: { kind: 'slotCondition', carPartId: 'block', minBand: 'mint' },
-        minToolTier: 1,
       },
     ],
     car: { ...car, id },

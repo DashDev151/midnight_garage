@@ -9,7 +9,6 @@ const baseTask = {
     carPartId: 'ignitionEcu' as const,
     minBand: 'fine' as const,
   },
-  minToolTier: 1 as const,
 }
 
 const baseType = {
@@ -103,11 +102,11 @@ describe('ScriptedServiceJobRecipeSchema (the stand owner’s job)', () => {
     expect(SCRIPTED_SERVICE_JOB.modelId).toBe('honda-acty-ha4')
   })
 
-  it('every authored task is minToolTier 1 - completable by a day-one shop', () => {
+  it('every authored task asks for a band a day-one shop can reach - none asks for mint', () => {
     for (const task of SCRIPTED_SERVICE_JOB.tasks) {
       expect(task.kind).toBe('slotCondition')
       if (task.kind !== 'slotCondition') continue
-      expect(task.minToolTier).toBe(1)
+      expect(task.requirement.minBand).not.toBe('mint')
     }
   })
 

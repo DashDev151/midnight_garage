@@ -1,82 +1,40 @@
 import {
+  CARS,
   ECONOMY,
   PARTS,
   PARTS_TAXONOMY,
-  type GameState,
+  type CarPartId,
+  type RepairJobKind,
   type StaffMember,
+  type ToolTiers,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
 import { energyMax } from '../src/laborSlots'
-import {
-  buildCarInstance,
-  groupCarParts,
-  testSceneStanding,
-  testToolLevels,
-  testToolTiers,
-} from './testFixtures'
+import { energyPlanFor } from '../src/repairJobs'
+import { buildCarInstance, mintCarParts, testGameState, testToolTiers } from './testFixtures'
 
 /**
- * A calibration probe, closed-form (no bots, no RNG) - the honest check
- * that the continuous daily labour bar is calibrated so day-1 is
- * unchanged and tools + staff are the loosening levers. Every figure is a
- * direct call into the real `energyMax` / `planGroupRepair`, so it can
- * never drift from what the game does.
+ * A calibration probe, closed-form (no bots, no RNG) - the honest check that
+ * the continuous daily labour bar is calibrated against the job model. Every
+ * figure is a direct call into the real `energyMax` / `energyPlanFor`, so it
+ * can never drift from what the game does.
  *
- * "Throughput" here is grade-climbs a shop can afford in one day: the
- * daily energy pool divided by the per-grade repair cost at its tools.
- * Day-1 is a fresh solo tier-1 shop; late game is a full bench on tier-3
- * tools. The ratio between them is DISCLOSED (not force-pinned) so the
- * loosening curve stays honest.
+ * The job model prices work in STEPS: a repair is an ordered recipe and each
+ * step costs `energy.energyPerStepPoints`, whatever band the part is at and
+ * whatever the part costs in yen. So "throughput" here is recipe steps a shop
+ * can afford in one day: the daily energy pool divided by the price of a step.
+ *
+ * There are exactly two levers on that figure, and this file measures both:
+ * staff raise the POOL, and tools lower the PRICE of a step by taking it off
+ * the slog rate. Day one is a fresh solo garage with tier-1 lines, which slogs
+ * every tier-2 step by hand at `toolHire.slogMultiplier`; late game is a full
+ * bench with the machines owned. The ratio between them is DISCLOSED (not
+ * force-pinned) so the loosening curve stays honest.
  */
-const CONTEXT = buildSimContext([], PARTS, [], PARTS_TAXONOMY)
-const { basePoolPoints, pointsPerLabour, energyPerBandStepByToolTier: EPG } = ECONOMY.energy
-
-/** A minimal GameState carrying only what `energyMax` reads (its staff roster);
- * every other field is a neutral placeholder. */
-function stateWithStaff(staff: StaffMember[]): GameState {
-  return {
-    day: 1,
-    seed: 1,
-    cashYen: 0,
-    reputationTier: 'unknown',
-    reputationPoints: 0,
-    sceneStanding: testSceneStanding(),
-    ownedCars: [],
-    partInventory: [],
-    staff,
-    staffAds: [],
-    jobs: [],
-    marketHeat: {},
-    marketLedger: { lotSupply: {}, playerSales: {} },
-    activeAuctionLots: [],
-    carsForSale: [],
-    pendingOffers: [],
-    serviceJobOffers: [],
-    activeServiceJobs: [],
-    serviceBayCount: 1,
-    parkingBayCount: 3,
-    serviceBayCarIds: [],
-    parkingCarIds: [],
-    forecourtBayCount: 2,
-    forecourtCarIds: [null, null],
-    graceParkingCarId: null,
-    energySpentToday: 0,
-    benchParts: {},
-    lift: { owned: false, hirePaidDay: null },
-    toolTiers: testToolTiers(),
-    pendingPartOrders: [],
-    cartPartIds: [],
-    carLedgers: {},
-    toolShopsOwned: [],
-    serviceJobLedgers: {},
-    inspectionVisit: null,
-    workbenchPartId: null,
-    machinePartId: null,
-    storyMissions: [],
-  }
-}
+const CONTEXT = buildSimContext(CARS, PARTS, [], PARTS_TAXONOMY)
+const { basePoolPoints, pointsPerLabour, energyPerStepPoints } = ECONOMY.energy
+const { slogMultiplier } = ECONOMY.toolHire
 
 const benchMember = (laborSlotsPerDay: 1 | 2): StaffMember => ({
   id: `crew-${laborSlotsPerDay}`,
@@ -89,82 +47,102 @@ const benchMember = (laborSlotsPerDay: 1 | 2): StaffMember => ({
   trait: 'night-owl',
 })
 
-/** A representative fresh-shop repair: a worn body group (all-surface, so the
- * whole group is on-car workable) climbed to fine at the given tool tier. */
-function bodyRepairEnergy(tier: 1 | 2 | 3): number {
-  const car = buildCarInstance({ parts: groupCarParts({ body: 'worn' }) })
-  return planGroupRepair(
-    car,
-    'body',
-    'fine',
-    testToolLevels({ body: tier }),
-    CONTEXT.partIdsByGroup,
-    CONTEXT.partsById,
-    CONTEXT.partsTaxonomyById,
-    ECONOMY.restoration.repairStepFraction,
-    EPG,
-  ).laborSlotsRequired
+/** Every tool line standing at the same tier. */
+function allLinesAt(tier: 1 | 2): ToolTiers {
+  return testToolTiers({
+    engine: tier,
+    drivetrain: tier,
+    suspension: tier,
+    wheels: tier,
+    body: tier,
+    interior: tier,
+  })
 }
 
-describe('energy-bar calibration (a day holds more than it used to; tools + staff loosen further)', () => {
-  /**
-   * The base pool was raised from 6 labour slots to 8 because a day ran out
-   * too soon to finish anything satisfying. Every labour COST is untouched:
-   * only the pool grew, so the same work simply fits.
-   */
-  it('a fresh solo tier-1 shop starts on the base pool of 8 labour slots', () => {
-    expect(energyMax(stateWithStaff([]), ECONOMY)).toBe(basePoolPoints)
+/**
+ * The energy one repair job on one slot costs a shop whose lines all stand at
+ * `tier`, summed off the live plan. `dampers` is the fixture of choice for the
+ * tool lever: its Rebuild is two tier-2 steps and neither is welding or
+ * machining, so both are genuinely sloggable and the lever shows on the whole
+ * recipe rather than on part of it.
+ */
+function jobEnergy(carPartId: CarPartId, kind: RepairJobKind, tier: 1 | 2): number {
+  const car = buildCarInstance({ parts: mintCarParts({ [carPartId]: 'poor' }) })
+  const state = testGameState({ ownedCars: [car], toolTiers: allLinesAt(tier) })
+  return energyPlanFor(
+    state,
+    CONTEXT,
+    { kind: 'installed', carInstanceId: car.id, carPartId },
+    kind,
+  ).reduce((sum, points) => sum + points, 0)
+}
+
+describe('energy-bar calibration (a day is a step count; tools + staff loosen it)', () => {
+  it('a fresh solo garage starts on the base pool of 8 labour slots, and a step costs four points', () => {
+    expect(energyMax(testGameState(), ECONOMY)).toBe(basePoolPoints)
     expect(basePoolPoints).toBe(8 * pointsPerLabour)
-    // Sprint213.md item 4 (labour-cost deflation) trims tier 1's per-band-step
-    // cost again, from half a labour slot to two-fifths of one: a clean
-    // entry-tier rebuild now runs a fraction of its old point cost without
-    // touching any repair's yen cost at all.
-    expect(EPG[1]).toBe(4)
+    // A step is the unit of repair work, and its price is flat: what a job
+    // costs is how many steps its recipe holds, never how far the band has to
+    // climb or what the part is worth.
+    expect(energyPerStepPoints).toBe(4)
+    // The sizing statement the number exists to make: a two-step Service is
+    // most of one labour slot, so a small job is felt without eating the day.
+    expect((2 * energyPerStepPoints) / pointsPerLabour).toBe(0.8)
   })
 
-  it('day-1 is not softlocked: the daily pool affords a representative worn-body repair with room to spare', () => {
-    const daily = energyMax(stateWithStaff([]), ECONOMY)
-    const repair = bodyRepairEnergy(1)
-    expect(repair).toBeGreaterThan(0)
-    // A full worn->fine surface-body repair fits inside one day's labour - a
-    // fresh shop completes meaningful work on day 1 (and has energy left over).
-    expect(repair).toBeLessThanOrEqual(daily)
+  it('day-1 is not softlocked: the daily pool affords a whole slogged buried Rebuild with room to spare', () => {
+    const daily = energyMax(testGameState(), ECONOMY)
+    // `block` is buried and its Rebuild is three steps, every one of them
+    // slogged at a fresh garage - the most expensive single-slot job a day-1
+    // shop can take on, and it still fits.
+    const worst = jobEnergy('block', 'rebuild', 1)
+    expect(worst).toBe(3 * energyPerStepPoints * slogMultiplier)
+    expect(worst).toBeLessThanOrEqual(daily)
   })
 
-  it('owning better tools measurably raises throughput: the same repair costs strictly less energy at tier 3', () => {
-    expect(bodyRepairEnergy(3)).toBeLessThan(bodyRepairEnergy(1))
-    // Genuine fraction, not a rounded whole slot: tier-3 per-grade cost is below tier-1's.
-    expect(EPG[3]).toBeLessThan(EPG[1])
+  it('owning the machines measurably raises throughput: the same job costs the slog multiple by hand', () => {
+    const slogged = jobEnergy('dampers', 'rebuild', 1)
+    const owned = jobEnergy('dampers', 'rebuild', 2)
+    expect(owned).toBe(2 * energyPerStepPoints)
+    expect(slogged).toBe(owned * slogMultiplier)
+    expect(owned).toBeLessThan(slogged)
   })
 
   it('benching staff measurably raises the pool: a 2-slot member adds 2 x pointsPerLabour energy', () => {
-    const solo = energyMax(stateWithStaff([]), ECONOMY)
-    const withCrew = energyMax(stateWithStaff([benchMember(2)]), ECONOMY)
+    const solo = energyMax(testGameState(), ECONOMY)
+    const withCrew = energyMax(testGameState({ staff: [benchMember(2)] }), ECONOMY)
     expect(withCrew).toBe(solo + 2 * pointsPerLabour)
     expect(withCrew).toBeGreaterThan(solo)
   })
 
   it('discloses the day-1 vs late-game throughput ratio (honest loosening), and the loosening is real', () => {
-    // Throughput = grade-climbs affordable per day = daily energy / per-grade cost.
-    const day1Daily = energyMax(stateWithStaff([]), ECONOMY)
-    const day1Throughput = day1Daily / EPG[1]
+    // Throughput = recipe steps affordable per day = daily energy / step price.
+    const day1Daily = energyMax(testGameState(), ECONOMY)
+    // Work a fresh garage's own tier-1 tools already reach costs base rate:
+    // twenty steps in a day, which is the day-1 ceiling on light work.
+    expect(day1Daily / energyPerStepPoints).toBe(20)
+    // Tier-2 bench work is what a fresh garage actually slogs, and that is the
+    // rate the tool lever is measured against.
+    const day1Throughput = day1Daily / (energyPerStepPoints * slogMultiplier)
 
-    // Late game: a full bench of 2-slot members on tier-3 tools.
+    // Late game: a full bench of 2-slot members with the machines owned, so
+    // nothing is slogged and every step is base rate.
     const fullBench = Array.from({ length: ECONOMY.staff.maxStaff }, () => benchMember(2))
-    const lateDaily = energyMax(stateWithStaff(fullBench), ECONOMY)
-    const lateThroughput = lateDaily / EPG[3]
+    const lateDaily = energyMax(testGameState({ staff: fullBench }), ECONOMY)
+    const lateThroughput = lateDaily / energyPerStepPoints
 
-    const ratio = lateThroughput / day1Throughput
     // The honest day-1 to late-game loosening curve, pinned as assertions (not
-    // a console disclosure - sim has no DOM/node lib). Sprint213.md item 4
-    // trimmed EPG[1] 5 -> 4 and EPG[3] 3 -> 2 (the whole tool-tier curve
-    // shifted down by one, preserving its own shape - see economy.json's own
-    // comment on the interlock), so day 1 now climbs 20 grades (80 / 4) and
-    // late game 80 (160 / 2).
-    expect(day1Throughput).toBe(20)
-    expect(lateThroughput).toBe(80)
+    // a console disclosure - sim has no DOM/node lib). A day-1 garage slogs a
+    // tier-2 step at 12 points and gets through 6 and two-thirds of them; a
+    // full bench with the machines owned pays 4 a step and gets through 40.
+    expect(day1Throughput).toBeCloseTo(20 / 3, 10)
+    expect(lateThroughput).toBe(40)
+    // Staff alone double the day; the machines alone triple what a step buys.
+    expect(lateDaily / day1Daily).toBe(2)
     // The gate: the loosening is real (late game genuinely out-works day 1) but
     // not absurd (an order of magnitude is the sane ceiling for this arc).
+    const ratio = lateThroughput / day1Throughput
+    expect(ratio).toBeCloseTo(6, 10)
     expect(ratio).toBeGreaterThan(1)
     expect(ratio).toBeLessThan(10)
   })

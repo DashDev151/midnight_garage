@@ -244,7 +244,7 @@ import {
   symptomTested,
   symptomVerdictCauseId,
   swapCars as swapCarsCore,
-  toolDeficitSummary,
+  toolGateSummary,
   toolLevelsFor,
   toolShopForGroup,
   toolShopRepGate,
@@ -743,10 +743,10 @@ function humanizeTemplateId(id: string): string {
  * line actually unlocks - derived live from the real catalog, nothing
  * hand-authored. */
 export interface ToolTierInfo {
-  /** Real job templates with a task in this group whose minToolTier is
-   * exactly this rung - "reaching this tier makes these jobs offerable"
-   * (assuming no other group is deficient, same one-tier-away rule
-   * `isTemplateOfferable` uses). */
+  /** Real job templates a purchase makes offerable - the Restore work only
+   * the covering shop opens (`taskToolBlocked`, sim/serviceJobs.ts). Empty for
+   * a rung: every other job is already on the board, bought instead with a
+   * day's hire or an evening's slog. */
   unlocksJobTemplateNames: string[]
   /** True only for the engine line at the level that owns the one real
    * own-car capability ceiling (`toolCeilings.naToTurboConversionEngineTier`). */
@@ -903,21 +903,20 @@ export interface ServiceJobOfferView {
   /** The whole job's labour, rounded to the nearest slot - every task's
    * real physical chain (`serviceJobCostBreakdown`, taskLaborChain.ts:
    * clearing and refitting whatever blocks the slot, pulling the part or
-   * its assembly, the bench work, and the refit), priced at the shop's own
-   * current machine state, so the player can judge the trade before
-   * accepting. */
+   * its assembly, the bench job, and the refit), at the base rate the quote
+   * assumes, so the player can judge the trade before accepting. */
   laborSlots: number
   baseReputation: number
   expiresOnDay: number
   /**
-   * False while any task's `minToolTier` exceeds its line's current tier -
-   * `resolveAcceptServiceJob` refuses it, so the UI shows why
-   * upfront rather than letting the click silently fail. Derived live, so
-   * it flips true the moment the upgrade lands.
+   * False while a task asks for a Restore this garage has no covering shop
+   * for - `resolveAcceptServiceJob` refuses it, so the UI shows why upfront
+   * rather than letting the click silently fail. Derived live, so it flips
+   * true the moment the shop lands.
    */
   canAccept: boolean
   /** Set only when `canAccept` is false: the offer rule's upgrade-hint
-   * string, "needs <the deficient line's next tier displayName>". */
+   * string, "needs <the covering shop's displayName>". */
   upgradeHint?: string
 }
 
@@ -1403,15 +1402,12 @@ export const useGameStore = defineStore('game', () => {
   const serviceJobOfferViews = computed<ServiceJobOfferView[]>(() =>
     gameState.value.serviceJobOffers.map((offer) => {
       const model = context.value.modelsById[offer.car.modelId]
-      const canAccept =
-        toolDeficitSummary(offer.tasks, toolLevels.value, context.value).maxDeficit === 0
+      const canAccept = !toolGateSummary(offer.tasks, toolLevels.value, context.value).blocked
       // The same cost pipeline the payout itself was priced off at
-      // generation - never a second computation - read live against the
-      // shop's CURRENT machine state, so the figure tracks an upgrade
-      // bought after the offer landed.
+      // generation - never a second computation - so the figure on the card
+      // is the one the quote was built from.
       const laborSlots = model
-        ? serviceJobCostBreakdown(offer.tasks, offer.car, model, context.value, gameState.value)
-            .laborSlots
+        ? serviceJobCostBreakdown(offer.tasks, offer.car, model, context.value).laborSlots
         : 0
       return {
         id: offer.id,
@@ -1704,13 +1700,11 @@ export const useGameStore = defineStore('game', () => {
             {
               kind: 'slotCondition',
               requirement: { kind: 'slotCondition', carPartId: cause.carPartId, minBand: 'fine' },
-              minToolTier: 1,
             },
           ],
           car,
           model,
           context.value,
-          gameState.value,
         )
         return {
           causeLabel: rawLabel.charAt(0).toLowerCase() + rawLabel.slice(1),
@@ -3871,7 +3865,12 @@ export const useGameStore = defineStore('game', () => {
       template.tasks.some((task) => {
         if (task.kind !== 'slotCondition') return false
         const group = context.value.partsTaxonomyById[task.requirement.carPartId]?.group
-        return group !== undefined && covers.includes(group) && task.minToolTier === 3
+        return (
+          group !== undefined &&
+          covers.includes(group) &&
+          !task.requirement.minGrade &&
+          task.requirement.minBand === 'mint'
+        )
       }),
     ).map((template) => humanizeTemplateId(template.id))
     return {
@@ -3902,20 +3901,16 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * What reaching `tier` of `componentId`'s
-   * line unlocks, derived live from the real catalog (job templates whose
-   * task list needs exactly this tier in this group, the engine tier-3
-   * NA-to-turbo ceiling, and the tier's own speed effect).
+   * What reaching `tier` of `componentId`'s line unlocks, derived live from
+   * the real catalogue: the engine tier-3 NA-to-turbo ceiling, the tier's own
+   * speed effect, and the day-hire this rung ends. No job list - a rung opens
+   * no commission that was closed.
    */
   function toolTierInfo(componentId: ComponentId, tier: ToolTier): ToolTierInfo {
-    const unlocksJobTemplateNames = SERVICE_JOB_TYPES.filter((template) =>
-      template.tasks.some(
-        (task) =>
-          task.kind === 'slotCondition' &&
-          context.value.partsTaxonomyById[task.requirement.carPartId]?.group === componentId &&
-          task.minToolTier === tier,
-      ),
-    ).map((template) => humanizeTemplateId(template.id))
+    // A rung opens no job that was closed: every band below mint is already
+    // offered on day one, hired for the day or slogged by hand. What a rung
+    // buys is speed and the end of the hire fee, both stated below.
+    const unlocksJobTemplateNames: string[] = []
     // The tier-2 rung shows its daily hire price until the machine is owned -
     // the same machine the Machine hire panel charges to hire by the day.
     const rentalFeeText =

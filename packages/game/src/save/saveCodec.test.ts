@@ -1175,8 +1175,8 @@ describe('saveCodec', () => {
       const code = 'MGSAVE1.' + btoa(JSON.stringify(preV18))
       const decoded = decodeSave(code)
       const job = decoded.activeServiceJobs[0]
-      // `minToolTier: 1` is the schema default for legacy tasks - they decode
-      // at the no-ceiling floor. The migration's output is the current
+      // A legacy task decodes to the current shape, which carries no tool
+      // ceiling of its own at all. The migration's output is the current
       // outcome-based shape (directive 17 case (a) - `migrateServiceJobToTasks`
       // was updated so its result still validates under the schema it now
       // decodes into).
@@ -1184,7 +1184,6 @@ describe('saveCodec', () => {
         {
           kind: 'slotCondition',
           requirement: { kind: 'slotCondition', carPartId: 'block', minBand: 'mint' },
-          minToolTier: 1,
         },
       ])
       // Already-rolled economics untouched, per the sprint doc's own
@@ -1239,7 +1238,6 @@ describe('saveCodec', () => {
             minBand: 'fine',
             minGrade: 'stock',
           },
-          minToolTier: 1,
         },
       ])
       // arrivesOnDay was null on the fixture (already arrived), so there's
@@ -1793,7 +1791,6 @@ describe('saveCodec', () => {
           tasks: [
             {
               requirement: { kind: 'slotCondition', carPartId: 'block', minBand: 'mint' },
-              minToolTier: 1,
             },
           ],
           car: {

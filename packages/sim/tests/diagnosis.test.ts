@@ -1543,28 +1543,66 @@ describe('playerEstimateYen (Sprint 74 decision 6)', () => {
     expect(playerEstimateYen(narrowed, MODEL, STATE, CONTEXT)).toBe(severeValue)
   })
 
-  it('no longer equals sheetGuideValueYen while unnarrowed (Sprint 216: the room is a separate, cost-based consumer) - narrowing still moves the player further above it', () => {
+  // What this asserts is that the two numbers are genuinely SEPARATE, and that
+  // only one of them moves with what the player knows. It deliberately does not
+  // assert which of them is larger.
+  //
+  // The room deducts a fear-biased FIX COST (`roomSymptomCostYen`); the player
+  // deducts a VALUE LOSS. Which reads higher depends on whether the fear
+  // premium beats the gap `marketRepairDiscount` opens between what a fix costs
+  // and what the damage destroys, and that turns on the candidate SPREAD, which
+  // is a property of the symptom and the tier rather than of the estimators.
+  // The same quantity is exported as `SymptomBalanceProbeRow.blindBuyEvYen`,
+  // whose own doc comment states it is measured and disclosed rather than
+  // gated, for exactly this reason. Measured over that probe's 68 rows (every
+  // shipped symptom on every fitment tier) the player's unnarrowed number reads
+  // above the room's on 12: entry 10 of 17, everyday 0 of 17, enthusiast 1 of
+  // 17, flagship 1 of 17. So a sign gate on one entry-tier fixture with a
+  // one-band candidate spread was pinning an accident.
+  //
+  // This fixture's own figures, for the record. Apparent value 112,000. The two
+  // candidates (a worn and a poor headValvetrain) fix for 11,200 and 12,320, a
+  // Rebuild that wants tier 2 kit but welds nothing and so names no hire day;
+  // at `fearBias` 0.85 the room deducts 0.85 x 12,320 + 0.15 x 11,760 = 12,236
+  // and reads 99,764. The player deducts the 14,968 of value the same damage
+  // destroys and reads 97,032. The fear premium over the plain mean cost is 476
+  // yen across a 1,120 yen spread; `marketRepairDiscount` puts the value loss
+  // 3,208 yen above that same mean cost, so it wins here. While every tier 2
+  // recipe bought a day the candidates cost 26,200 and 27,320 and the room read
+  // 84,764, and the accidental 15,000 was covering the difference.
+  it('is a separate number from sheetGuideValueYen while unnarrowed (Sprint 216: the room is a cost-based consumer), and the player alone moves with what they learn', () => {
     const car = carWithSymptom()
-    // Both estimators read every cause while nothing has narrowed, but they
-    // are no longer the SAME formula: playerEstimateYen (via
-    // expectedTrueValueYen's own value-weighted basis) and
-    // sheetGuideValueYen (fear-biased, chain-priced fix cost) are two
-    // genuinely separate consumers of the same cause list now
-    // (knowledge-and-diagnosis.md section 4). For this fixture the player's
-    // own number already reads above the room's even before anything
-    // narrows.
-    expect(playerEstimateYen(car, MODEL, STATE, CONTEXT)).toBeGreaterThan(
-      sheetGuideValueYen(car, MODEL, STATE, CONTEXT),
-    )
-    // Eliminating the severe cause lifts the player's number further still -
-    // the room keeps fear-pricing across both causes regardless.
-    const narrowed: CarInstance = {
+    const narrowedToMild: CarInstance = {
       ...car,
       symptoms: [{ ...car.symptoms[0]!, remainingCauseIds: ['cause-mild'] }],
     }
-    expect(playerEstimateYen(narrowed, MODEL, STATE, CONTEXT)).toBeGreaterThan(
-      sheetGuideValueYen(narrowed, MODEL, STATE, CONTEXT),
+    const narrowedToSevere: CarInstance = {
+      ...car,
+      symptoms: [{ ...car.symptoms[0]!, remainingCauseIds: ['cause-severe'] }],
+    }
+
+    // Both estimators read every cause while nothing has narrowed, but they
+    // are no longer the SAME formula: playerEstimateYen (via
+    // expectedTrueValueYen's own value-weighted basis) and sheetGuideValueYen
+    // (fear-biased, chain-priced fix cost) are two genuinely separate
+    // consumers of the same cause list (knowledge-and-diagnosis.md section 4).
+    expect(playerEstimateYen(car, MODEL, STATE, CONTEXT)).not.toBe(
+      sheetGuideValueYen(car, MODEL, STATE, CONTEXT),
     )
+
+    // The information edge, and it cuts both ways (section 4: "the player's
+    // information edge is large in both directions"). Eliminating the severe
+    // cause lifts the player's number; eliminating the mild one drops it.
+    const unnarrowed = playerEstimateYen(car, MODEL, STATE, CONTEXT)
+    expect(playerEstimateYen(narrowedToMild, MODEL, STATE, CONTEXT)).toBeGreaterThan(unnarrowed)
+    expect(playerEstimateYen(narrowedToSevere, MODEL, STATE, CONTEXT)).toBeLessThan(unnarrowed)
+
+    // The room never narrows: it fear-prices across every authored cause
+    // regardless of what the player has ruled out, so its number is the same
+    // in all three views and the whole of the movement above is the player's.
+    const roomUnnarrowed = sheetGuideValueYen(car, MODEL, STATE, CONTEXT)
+    expect(sheetGuideValueYen(narrowedToMild, MODEL, STATE, CONTEXT)).toBe(roomUnnarrowed)
+    expect(sheetGuideValueYen(narrowedToSevere, MODEL, STATE, CONTEXT)).toBe(roomUnnarrowed)
   })
 })
 
@@ -1792,7 +1830,7 @@ describe('rollBuyerNotice (sprint217.md task B)', () => {
   it('on notice, deducts candidateFixCostYen(trueCause) x noticeMultiplier and names the symptom card', () => {
     const car = carWithOpenNotice()
     const trueCause = TEST_SYMPTOM.causes.find((c) => c.id === 'cause-mild')!
-    const fixCost = candidateFixCostYen(car, MODEL, trueCause, STATE, CONTEXT)
+    const fixCost = candidateFixCostYen(car, MODEL, trueCause, CONTEXT)
     const result = rollBuyerNotice(car, MODEL, 1, STATE, CONTEXT, CERTAIN)
     expect(result.deductionYen).toBe(Math.round(fixCost * ECONOMY.diagnosis.noticeMultiplier))
     expect(result.noticeLine).toBe(
@@ -1855,8 +1893,8 @@ describe('rollBuyerNotice (sprint217.md task B)', () => {
     const causeMild = TEST_SYMPTOM.causes.find((c) => c.id === 'cause-mild')!
     const causeB = MULTI_PART_SYMPTOM.causes.find((c) => c.id === 'cause-b')!
     const expected = Math.round(
-      (candidateFixCostYen(car, MODEL, causeMild, STATE, CONTEXT) +
-        candidateFixCostYen(car, MODEL, causeB, STATE, CONTEXT)) *
+      (candidateFixCostYen(car, MODEL, causeMild, CONTEXT) +
+        candidateFixCostYen(car, MODEL, causeB, CONTEXT)) *
         ECONOMY.diagnosis.noticeMultiplier,
     )
     const result = rollBuyerNotice(car, MODEL, 1, STATE, CONTEXT, CERTAIN)

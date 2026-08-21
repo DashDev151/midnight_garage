@@ -162,17 +162,89 @@ const SMOKE_SCRIPT = CareerScriptSchema.parse(smokeScriptRaw)
 // roll never had an eligible rung to draw from. The day-10 `carsOwned` count
 // and `reputationTier` are unchanged and still pass. Re-derived from a real
 // run, never hand-guessed.
+//
+// Re-pinned for the re-based quote, and the whole CASH movement is one
+// number: the day-1 buyout of `lot-1-local-yard-0` is struck at 43,704 ->
+// 38,410 yen. Two causes move it, and they pull opposite ways. Pricing a
+// symptom candidate's fix through the job model (the smallest job that
+// reaches `fine`, its banded parts bill and its full labour chain) costs
+// MORE than the band climb it replaced, so the room's fear-priced discount
+// grows and the lot is struck 6,181 yen cheaper; naming a day's tool hire
+// only where a welding or machining step forces one then gives 887 of that
+// back. The script's other two money events are unmoved to the yen (the
+// express `stock-block` at 28,160 and its resale at 7,680), so cash runs
+// 5,294 yen richer from day 1 onward: 241,110 through day 4, 221,110 from
+// the day-5 rent, 201,110 after day 10's. `smoke.script.json`'s day-7
+// `cashAtMost` ceiling is re-derived from that run, 215,816 -> 221,110,
+// which is 215,816 + 5,294 exactly. The hash carries more than the cash:
+// the day's service-job board is state too, and both which templates are
+// offerable (the band decides it now, not a tool tier) and what each offer
+// quotes have moved. This career rejects its one offer, so none of that
+// reaches the till. Measured rather than assumed: restore
+// the superseded "any tier 2 step names a day" rule and the sequence is
+// exactly `2bfb5ee5 44a5d784 175882ec d4ccde3e cc8ce89d 362d2785 e176b191
+// 8b891810 c364ea16 ba296922` with the buyout at 37,523 and day-7 cash at
+// 221,997, which is the first step on its own. The day-10 `carsOwned`
+// count and `reputationTier` are unchanged and still pass. Re-derived from
+// a real run, never hand-guessed.
+// Re-pinned for a body task's labour, and nothing else moves. The two
+// zone-derived carriers have no bench recipe, so a quote priced their work at
+// nothing; a body task's labour is now the body pipeline's own stages
+// (`bodyPartRepairLabourPoints`, walked off the same `planZoneRepair` the
+// carrier's money bill uses) at `energy.bodyStagePoints`. That reprices only
+// the `small-bodywork-touchup` offers this career's board draws. Day 1 is
+// UNCHANGED at `2042bc88` because day 1's board holds one offer and it is a
+// `coilover-install`; the first body offer lands on day 2 (16,384 -> 20,147)
+// and the sequence moves from there. Not one yen reaches the till - this
+// career rejects its only offer and never takes a commission - so cash is
+// 241,110 through day 4, 221,110 from the day-5 rent and 201,110 after day
+// 10's, exactly as before, and the day-7 `cashAtMost` ceiling, the day-10
+// `carsOwned` count and the day-10 `reputationTier` are all unchanged and
+// still pass. Every non-body offer on every day is unmoved to the yen.
+// Measured rather than assumed: price a body carrier's repair at its (absent)
+// bench recipe again and the sequence is exactly the previous `2042bc88
+// 4f9e8fa5 19b41f44 e02f7782 5d20a23a 093a0210 405678ac 8f8c87ff d55ce832
+// b33ac3c9` with day-7 cash at 221,110. `advanceDay.test.ts`'s own two
+// goldens are unmoved for the same reason day 1 is: its 30-day master board
+// ends on a single `stand-owner-service-job` offer, whose tasks are
+// `ignitionEcu` and `fuelSystem`. `smoke.script.json`'s day-10 `kind: 'hash'`
+// checkpoint moves with this array; its day-1 one does not. Re-derived from a
+// real run, never hand-guessed.
+//
+// Re-pinned for the buried-access rig day's retirement, and the whole CASH
+// movement is again one number: the day-1 buyout of `lot-1-local-yard-0` is
+// struck at 38,410 -> 51,005 yen, so the career runs 12,595 POORER from day 1
+// onward (228,515 through day 4, 208,515 from the day-5 rent, 188,515 after day
+// 10's) and `smoke.script.json`'s day-7 `cashAtMost` ceiling is re-derived from
+// that run at 208,515 - the run's own figure with zero slack, tightened rather
+// than loosened. Reaching a buried slot no longer names a day's tool hire,
+// because nobody is forced to buy one: `accessRoute` (jobs.ts) works a buried
+// slot by hand at `toolHire.slogMultiplier` energy for no yen, so only a
+// welding or machining step forces a day (`forcedHireDayFor`, repairJobs.ts).
+// That fee was reaching a VALUATION through `candidateFixCostYen`, so the
+// room's fear-priced deduction on this car's `crunch-into-second` falls 32,446
+// -> 19,851 (-12,595) and the sheet's guide value rises by exactly that, which
+// is the buyout to the yen. The script's other two money events are unmoved
+// (the express `stock-block` at 28,160 and its resale at 7,680). Measured
+// rather than assumed: restore the retired buried-access day and the sequence
+// is exactly the previous `2042bc88 27ad3fe5 82e2ed78 38ec039e 931eab6e
+// a908c340 fa88344c ba101ab6 3cc7d5bb 282726da` with the buyout at 38,410 and
+// day-7 cash at 221,110, so nothing else in this career moved. The day-10
+// `carsOwned` count and `reputationTier` are unchanged and still pass, and
+// `advanceDay.test.ts`'s own two goldens do not move at all: neither script
+// prices a symptom candidate or quotes a buy-new task on a buried slot.
+// Re-derived from a real run, never hand-guessed.
 const EXPECTED_HASHES_BY_DAY = [
-  '35a5a263',
-  '263c821b',
-  'f42cc0cb',
-  'ccabc953',
-  '6f360ace',
-  '929854c9',
-  'e01f5555',
-  'c67b53bb',
-  '2e3da848',
-  'b2cff21a',
+  'a571205c',
+  '595fb5a5',
+  '1931ba90',
+  '92edcc5e',
+  'db22c8e2',
+  '1c38e664',
+  '3e041c28',
+  'c9fb84fa',
+  '2fcec9a3',
+  'bebb9bf9',
 ]
 
 describe('replayCareerScript (Sprint 198 C1)', () => {

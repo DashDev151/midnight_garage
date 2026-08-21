@@ -33,7 +33,6 @@ import {
   machineGateGroupFor,
   resolveReconditionLabor,
 } from '../src/jobs'
-import { createInitialGameState } from '../src/newGame'
 import { resolvePlaceOnStation, resolveTakeFromStation } from '../src/parts'
 import { makeCarOrigin, makeMarketOrigin } from '../src/provenance'
 import { deriveServiceJobPayoutYen, serviceJobCostBreakdown } from '../src/serviceJobs'
@@ -831,7 +830,6 @@ describe('a standard tyre/brake service job payout always covers its task cost',
 
   it('worst-margin payout clears the task cost, for every entry and everyday roster model', () => {
     const marginMin = CONTEXT.economy.serviceJobs.marginMin
-    const state = createInitialGameState(CONTEXT, 1)
     const entryEverydayModels = CARS.filter((m) => {
       const fitmentClass = fitmentClassForTier(m.tier)
       return fitmentClass === 'entry' || fitmentClass === 'everyday'
@@ -849,15 +847,8 @@ describe('a standard tyre/brake service job payout always covers its task cost',
       }
       for (const model of entryEverydayModels) {
         const car = buildCarInstance({ modelId: model.id, parts: mintCarParts(overrides) })
-        const payout = deriveServiceJobPayoutYen(
-          template.tasks,
-          car,
-          model,
-          CONTEXT,
-          state,
-          marginMin,
-        )
-        const cost = serviceJobCostBreakdown(template.tasks, car, model, CONTEXT, state).taskCostYen
+        const payout = deriveServiceJobPayoutYen(template.tasks, car, model, CONTEXT, marginMin)
+        const cost = serviceJobCostBreakdown(template.tasks, car, model, CONTEXT).taskCostYen
         if (payout <= cost) {
           failures.push(`${id} x ${model.id}: payout ${payout} <= task cost ${cost}`)
         }

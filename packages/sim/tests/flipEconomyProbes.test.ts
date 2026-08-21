@@ -28,7 +28,7 @@ import {
   computeRosterBalanceProbe,
   type ModelBalanceProbeRow,
 } from '../src/balanceProbes'
-import { bandIndex, canRepair, planPartRepair } from '../src/bands'
+import { bandIndex, canRepair } from '../src/bands'
 import { isBodyDerivedPart } from '../src/bodyPipeline'
 import { carLedgerFor } from '../src/carLedger'
 import { replayCareerScript } from '../src/careerReplay'
@@ -37,9 +37,10 @@ import { buildSimContext } from '../src/context'
 import { candidateFixCostYen } from '../src/diagnosis'
 import { buyerKnowledgeViewOf, seedVerifiedSlots } from '../src/knowledge'
 import { marketValueYen, sensibleRepairTargetBand } from '../src/marketValue'
-import { createInitialGameState } from '../src/newGame'
+import { partFixCostYen, sumFixCosts, type PartFixCost } from '../src/repairJobs'
 import { offerChanceFor, qualityMeanFor } from '../src/selling'
 import { deriveServiceJobPayoutYen, serviceJobCostBreakdown } from '../src/serviceJobs'
+import { taskLaborChain } from '../src/taskLaborChain'
 import { buildCarInstance, mintCarParts } from './testFixtures'
 
 /**
@@ -142,7 +143,6 @@ export function radialYenPerPoint(everydayModel: CarModel): {
    * "average points per job" divides `totalPoints` by this. */
   jobCount: number
 } {
-  const state = createInitialGameState(CONTEXT, 1)
   const marginRoll = (ECONOMY.serviceJobs.marginMin + ECONOMY.serviceJobs.marginMax) / 2
   const tierOneTemplates = SERVICE_JOB_TYPES.filter((t) => t.tier === 1)
 
@@ -163,20 +163,13 @@ export function radialYenPerPoint(everydayModel: CarModel): {
       overrides[task.requirement.carPartId] = 'poor'
     }
     const car = buildCarInstance({ modelId: everydayModel.id, parts: mintCarParts(overrides) })
-    const { laborSlots } = serviceJobCostBreakdown(
-      template.tasks,
-      car,
-      everydayModel,
-      CONTEXT,
-      state,
-    )
+    const { laborSlots } = serviceJobCostBreakdown(template.tasks, car, everydayModel, CONTEXT)
     if (laborSlots === 0) continue
     totalPayoutYen += deriveServiceJobPayoutYen(
       template.tasks,
       car,
       everydayModel,
       CONTEXT,
-      state,
       marginRoll,
     )
     totalPoints += laborSlots * ECONOMY.energy.pointsPerLabour
@@ -186,6 +179,19 @@ export function radialYenPerPoint(everydayModel: CarModel): {
 }
 
 describe('(b) radial wage (sprint213.md acceptance)', () => {
+  // The rate is 648.98 yen/pt over the six qualifying templates, 55,813 yen of
+  // payout across 86 labour points, inside the band with 1.02 yen of headroom
+  // at the ceiling. Its cost pool is 4,860 yen of parts and no tool hire at all:
+  // a quote buys a day only where the work cannot be done by hand, and not one
+  // of these six holds a step that cannot (`forcedHireDayFor`, repairJobs.ts).
+  // The labour stays at base rate, which is what a garage that hires would pay;
+  // a player working by hand pays the difference in energy at
+  // `toolHire.slogMultiplier` rather than in yen.
+  //
+  // Recorded because it is the file's tightest bound and the one most likely to
+  // be misread as slack: while every tier 2 recipe bought a day, the same six
+  // templates carried 80,750 yen of hire against those 4,860 yen of parts and
+  // measured 1,836.77 yen/pt. No bound in this file moved.
   it('the aggregate tier-1 service-job yen/labour-point lands at Y500-650', () => {
     const model = CARS.find((c) => c.tier === 'everyday')
     if (!model) throw new Error('fixture: no everyday-tier roster model found')
@@ -323,6 +329,13 @@ describe('(c) the golden session: the day-5 Honda Today flip (sprint213.md accep
 const RADIAL_JOBS_PER_WEEK = 2
 
 describe('(d) whole-week arithmetic reproduces the pace anchor (sprint213.md acceptance)', () => {
+  // The week reads 74,994: a 62,390 entry flip margin plus two radial jobs at
+  // (b)'s own 9,302 mean payout, less 6,000 of rent. The radial half is the
+  // sensitive one, since it is two of probe (b)'s payouts undiluted: while every
+  // tier 2 recipe bought a hire day those payouts averaged 26,327 and this week
+  // read 109,044, over a ceiling of 85,000. Both halves move together, so a
+  // change to what a quote assumes about tools lands here twice as hard as it
+  // does on (b).
   it('one entry flip plus a supply-bounded week of radial jobs nets ~Y50-70k after rent', () => {
     const entryRows = flipRowsWithLabour().filter((row) => row.fitmentClass === 'entry')
     expect(entryRows.length).toBeGreaterThan(0)
@@ -394,6 +407,39 @@ function toDayRate(
   const waitToSellDays = 1 / offerChanceFor(model, 100, economy)
   const days = 1 + repairDays + waitToSellDays // +1 for the acquisition day itself
   return { marginYen, laborPoints, days, yenPerDay: marginYen / days }
+}
+
+/**
+ * What putting ONE slot right costs and takes on the job model - the atom both
+ * scenarios below price every repair through, so a light flip and a deep flip
+ * are always measured on the same money and the same clock.
+ *
+ * The money is the shared fix price's PARTS half (`partFixCostYen`): the banded
+ * parts bill, and never a tool-hire day, exactly as a whole-car bill charges
+ * none (`carCostToBandYen`). Both flips here are the player's own spanner work
+ * rather than a commission, and a day is plant access rather than a car's
+ * input. The time is the whole physical chain (`taskLaborChain`) - blockers
+ * cleared and put back, the part or its assembly pulled, the bench job's own
+ * recipe steps, and the refit - never a band-step estimate.
+ *
+ * Null for a slot with nothing to do, nothing installed, or nothing a job can
+ * save - a replacement is a purchase, not the repair either flip is pricing.
+ */
+function slotFixOnJobModel(
+  car: CarInstance,
+  carPartId: CarPartId,
+  targetBand: ConditionBand,
+): { fix: PartFixCost; costYen: number; laborPoints: number } | null {
+  const entry = CONTEXT.partsTaxonomyById[carPartId]
+  const installed = car.parts[carPartId].installed
+  if (!entry || !installed || !canRepair(installed.band, entry)) return null
+  if (bandIndex(installed.band) >= bandIndex(targetBand)) return null
+  const catalogPart = CONTEXT.partsById[installed.partId]
+  if (!catalogPart) return null
+  const fix = partFixCostYen(entry, catalogPart, installed.band, targetBand, CONTEXT)
+  if (fix.jobKind === 'replace') return null
+  const chain = taskLaborChain(car, carPartId, fix.jobKind, CONTEXT)
+  return { fix, costYen: fix.partsYen, laborPoints: chain.totalPoints }
 }
 
 /** The worse of `installed`'s current band and `cause.setBand` - generation's
@@ -491,18 +537,9 @@ describe('(e) light flip vs deep flip, entry tier (sprint219.md: evidence-inform
     // Fix ONLY the diagnosed fault (symptom A's true cause), to the tier's
     // own sensible repair target - the light flip's whole labour spend.
     const target = sensibleRepairTargetBand(entryModel, CONTEXT.economy)
-    const partEntry = CONTEXT.partsTaxonomyById[trueCauseA.carPartId]!
     const installedA = knownCar.parts[trueCauseA.carPartId].installed!
-    const catalogPartA = CONTEXT.partsById[installedA.partId]!
-    const plan = planPartRepair(
-      installedA.band,
-      target,
-      1,
-      partEntry,
-      catalogPartA.priceYen,
-      CONTEXT.economy.restoration.repairStepFraction,
-      CONTEXT.economy.energy.energyPerBandStepByToolTier,
-    )
+    const fixA = slotFixOnJobModel(knownCar, trueCauseA.carPartId, target)
+    if (!fixA) throw new Error('fixture: the diagnosed cause left no repair to price')
     const repairedBand = bandIndex(installedA.band) < bandIndex(target) ? target : installedA.band
     const lightRepairedCar: CarInstance = {
       ...knownCar,
@@ -523,7 +560,6 @@ describe('(e) light flip vs deep flip, entry tier (sprint219.md: evidence-inform
     // (`buyerKnowledgeViewOf`), less the EXPECTED notice deduction for the
     // second, undiagnosed symptom - the same terms `rollBuyerNotice` rolls,
     // computed closed-form rather than sampled.
-    const neutralState = createInitialGameState(CONTEXT, 0)
     const demonstrableValueYen = marketValueYen(
       entryModel,
       buyerKnowledgeViewOf(lightRepairedCar, entryModel, CONTEXT),
@@ -535,26 +571,32 @@ describe('(e) light flip vs deep flip, entry tier (sprint219.md: evidence-inform
     const noticeChance = CONTEXT.economy.diagnosis.noticeChanceByArchetype['daily-drivers']
     const expectedNoticeDeductionYen =
       noticeChance *
-      candidateFixCostYen(lightRepairedCar, entryModel, trueCauseB, neutralState, CONTEXT) *
+      candidateFixCostYen(lightRepairedCar, entryModel, trueCauseB, CONTEXT) *
       CONTEXT.economy.diagnosis.noticeMultiplier
     const lightSaleYen = Math.round(demonstrableValueYen - expectedNoticeDeductionYen)
-    const lightMarginYen = lightSaleYen - buyYen - plan.costYen
-    const light = toDayRate(lightMarginYen, plan.laborSlotsRequired, entryModel, ECONOMY)
+    const lightMarginYen = lightSaleYen - buyYen - fixA.costYen
+    const light = toDayRate(lightMarginYen, fixA.laborPoints, entryModel, ECONOMY)
 
-    // MEASURED: light -5,743 yen/day (margin -14,446 over 2.52 days, 4
-    // labour points) vs deep +5,400 yen/day (margin +20,872 over 3.87 days,
-    // 112 labour points) - unchanged by the evidence term (knowledge.ts),
-    // because this car's own visible half is itself near-poor: there is
-    // nothing clean-looking for the evidence term to reward. See
-    // knowledge-and-diagnosis.md rulings-ledger item 13 for the full
-    // diagnosis of why sprint217.md's original softened-buried-groups gap
-    // sits entirely out of this scenario's own born-verified evidence.
+    // MEASURED on the job model: light -8,263 yen/day (margin -23,261 over
+    // 2.82 days, 28 labour points) vs deep -5,462 yen/day (margin -16,400
+    // over 3.00 days, 43 labour points). The ordering this scenario gates
+    // still holds, and holds the right way round: the light flip leaves a
+    // wreck unopened and is punished harder for leaving it.
     //
-    // Re-measured, bit-for-bit unchanged, after rulings-ledger item 14 froze
-    // the evidence term at acquisition (`knownCar`, seeded from
-    // `symptomaticCar` before the light flip's own repair): trueCauseA was
-    // never part of the born-verified set the evidence average reads, so
-    // freezing before rather than after its repair changes nothing here.
+    // The evidence term (knowledge.ts) does not move either side, because
+    // this car's own visible half is itself near-poor: there is nothing
+    // clean-looking for it to reward. See knowledge-and-diagnosis.md's
+    // rulings-ledger item 13 for why the softened-buried-groups gap sits
+    // entirely outside this scenario's born-verified evidence, and item 14
+    // for the acquisition freeze - trueCauseA was never in the born-verified
+    // set, so freezing before rather than after its repair changes nothing.
+    //
+    // DISCLOSED, never gated here: both sides now LOSE on this construction,
+    // where the deep side used to clear a real profit. The whole of that move
+    // is the day's hire the shared fix price charges once per PART: the deep
+    // side's own bill is 71,110 yen for this car, of which 62,000 is hire and
+    // 9,110 is parts. Whether the deep flip pays at all is gated roster-wide
+    // in `valueModelProbes.test.ts`, not by this ordering.
     expect(
       light.yenPerDay,
       `light ${light.yenPerDay.toFixed(0)} yen/day vs deep ${deep.yenPerDay.toFixed(0)} yen/day`,
@@ -624,18 +666,9 @@ describe('(e) light flip vs deep flip, entry tier (sprint219.md: evidence-inform
     // left open (there was only ever the one), so no buyer-notice deduction
     // applies - the whole gap to deep is what staying unverified elsewhere
     // costs at sale, nothing else.
-    const partEntry = CONTEXT.partsTaxonomyById[trueCause.carPartId]!
     const installed = knownCar.parts[trueCause.carPartId].installed!
-    const catalogPart = CONTEXT.partsById[installed.partId]!
-    const lightPlan = planPartRepair(
-      installed.band,
-      target,
-      1,
-      partEntry,
-      catalogPart.priceYen,
-      CONTEXT.economy.restoration.repairStepFraction,
-      CONTEXT.economy.energy.energyPerBandStepByToolTier,
-    )
+    const lightFix = slotFixOnJobModel(knownCar, trueCause.carPartId, target)
+    if (!lightFix) throw new Error('fixture: the diagnosed cause left no repair to price')
     const lightRepairedBand =
       bandIndex(installed.band) < bandIndex(target) ? target : installed.band
     const lightRepairedCar: CarInstance = {
@@ -660,37 +693,27 @@ describe('(e) light flip vs deep flip, entry tier (sprint219.md: evidence-inform
         CONTEXT.economy,
       ),
     )
-    const lightMarginYen = lightSaleYen - buyYen - lightPlan.costYen
-    const light = toDayRate(lightMarginYen, lightPlan.laborSlotsRequired, entryModel, ECONOMY)
+    const lightMarginYen = lightSaleYen - buyYen - lightFix.costYen
+    const light = toDayRate(lightMarginYen, lightFix.laborPoints, entryModel, ECONOMY)
 
     // DEEP FLIP: same car, open and fix every REPAIRABLE slot still below
     // the tier's own sensible repair target (the same target the light
     // flip's own fix uses), sell fully verified - the honest teardown.
-    let deepCostYen = 0
+    const deepFixes: PartFixCost[] = []
     let deepLaborPoints = 0
     let deepParts = symptomaticCar.parts
     for (const partId of ALL_CAR_PART_IDS) {
-      const entry = CONTEXT.partsTaxonomyById[partId]
-      if (!entry) continue
       if (symptomaticCar.zoneState && isBodyDerivedPart(partId)) continue // untouched, already fine
       const partInstalled = symptomaticCar.parts[partId].installed
-      if (!partInstalled || !canRepair(partInstalled.band, entry)) continue
-      if (bandIndex(partInstalled.band) >= bandIndex(target)) continue
-      const catalogEntry = CONTEXT.partsById[partInstalled.partId]
-      if (!catalogEntry) continue
-      const partPlan = planPartRepair(
-        partInstalled.band,
-        target,
-        1,
-        entry,
-        catalogEntry.priceYen,
-        CONTEXT.economy.restoration.repairStepFraction,
-        CONTEXT.economy.energy.energyPerBandStepByToolTier,
-      )
-      deepCostYen += partPlan.costYen
-      deepLaborPoints += partPlan.laborSlotsRequired
+      const partFix = slotFixOnJobModel(symptomaticCar, partId, target)
+      if (!partInstalled || !partFix) continue
+      deepFixes.push(partFix.fix)
+      deepLaborPoints += partFix.laborPoints
       deepParts = { ...deepParts, [partId]: { installed: { ...partInstalled, band: target } } }
     }
+    // The parts half alone, like every other whole-car bill: a teardown buys
+    // no tool-hire day.
+    const deepCostYen = sumFixCosts(deepFixes).partsYen
     const deepCar: CarInstance = {
       ...symptomaticCar,
       parts: deepParts,
@@ -717,20 +740,21 @@ describe('(e) light flip vs deep flip, entry tier (sprint219.md: evidence-inform
     // lead's own earlier 35-75% provisional band, which was never more
     // than a first guess at what "clearly below" should mean numerically.
     //
-    // Real measured run, after `unverifiedHaircutByTier.entry`/`.everyday`
-    // moved 0 -> 1 (economyApprovalGate.test.ts, felt behaviour: "no buyer
-    // pays the full guess for what you would not show them; even small
-    // money discounts a shut bonnet by a band"): light 3,850 yen/day
-    // (margin 9,683 over 2.52 days, 4 labour points, lightSaleYen 55,275)
-    // vs deep 14,526 yen/day (margin 42,346 over 2.92 days, 36 labour
-    // points, deepSaleYen 91,388) - ratio 0.27. Light is strictly positive
-    // and strictly below deep: the ruling is SATISFIED. The lead's own
-    // provisional 0.35 floor is not met at this exact construction (0.27 <
-    // 0.35) - disclosed, not gated: how small a light flip's return should
-    // feel is left open, to be judged against real play rather than a
-    // pre-set number.
+    // Real measured run on the job model: light 2,936 yen/day (margin 7,715
+    // over 2.63 days, 13 labour points, lightSaleYen 50,355, bought at
+    // 42,390, one `intake` worn-to-fine fix at 250 yen of parts) vs deep
+    // 9,902 yen/day (margin 40,378 over 4.08 days, 129 labour points,
+    // deepSaleYen 86,468, deepCostYen 3,700 over nine repairable slots).
+    // Ratio 0.30: both gates hold.
     //
-    // The mechanism behind the 0.27, for the record: `unverifiedHaircutByTier`
+    // Neither side buys a tool-hire day, and that is the point rather than an
+    // omission: this is the player's own spanner work, and a day buys a whole
+    // line for a whole day rather than a car (`carCostToBandYen`). Pricing one
+    // against a single flip put the light fix at 15,250 yen for 250 yen of
+    // parts and drove both sides negative.
+    //
+    // The other mechanism holding the light side down, unchanged and still
+    // worth knowing: `unverifiedHaircutByTier`
     // is a single per-tier scalar with no per-slot term (the same shape
     // limitation `priorBand` itself carries, knowledge.ts's own doc
     // comment), so it marks down every one of this car's ~20 unverified

@@ -14,7 +14,6 @@ import {
 import { describe, expect, it } from 'vitest'
 import { candidateFixCostYen } from '../src/diagnosis'
 import { buildSimContext } from '../src/context'
-import { createInitialGameState } from '../src/newGame'
 import { deriveSymptomJobPayoutYen, isServiceTaskDone } from '../src/serviceJobs'
 import { buildCarInstance, mintCarParts } from './testFixtures'
 
@@ -30,7 +29,6 @@ const CONTEXT = buildSimContext(
   ECONOMY,
 )
 
-const STATE = createInitialGameState(CONTEXT, 1)
 const MODEL = CARS.find((m) => m.id === 'honda-city-e-aa') ?? CARS[0]!
 
 /**
@@ -73,7 +71,7 @@ describe('resolveSymptom service job: order is the margin (sprint218.md task C5)
   })
 
   const marginRoll = (ECONOMY.serviceJobs.marginMin + ECONOMY.serviceJobs.marginMax) / 2
-  const payoutYen = deriveSymptomJobPayoutYen(symptom, car, MODEL, CONTEXT, STATE, marginRoll)
+  const payoutYen = deriveSymptomJobPayoutYen(symptom, car, MODEL, CONTEXT, marginRoll)
 
   /** Every candidate's own chain-priced fix cost (`candidateFixCostYen`,
    * diagnosis.ts - the ONE fix-cost function, the same one the payout
@@ -81,7 +79,7 @@ describe('resolveSymptom service job: order is the margin (sprint218.md task C5)
    * below read the identical figures the payout priced against. */
   const priced = symptom.causes.map((cause) => ({
     cause,
-    costYen: candidateFixCostYen(car, MODEL, cause, STATE, CONTEXT),
+    costYen: candidateFixCostYen(car, MODEL, cause, CONTEXT),
   }))
 
   it('every candidate carries a real, positive cost (fixture sanity)', () => {

@@ -458,22 +458,6 @@ pass."
   or stays a backdrop behind a text panel. Every room sprint until then should assume the answer is
   coming and avoid building UI that would be thrown away by it.
 
-- [ ] **Four independent implementations of repair-or-replace cost, and consolidating them is a real
-  refactor (maintainer, 2026-08-06: "okay. real refactoring needed").** The rule is: walk the parts,
-  `canRepair` ? `planPartRepair` : `stockReplacementPriceYenByClass`, accumulate cost and labour.
-  It is written at `bands.ts` (`carCostToBandYen`, `groupCostToMintYen`), `plays.ts:161/170/175`,
-  `balanceProbes.ts:431/487` and `serviceJobs.ts:270`.
-
-  **They currently agree, and nothing asserts that they do**, which is the failure mode sprint 188
-  was written for. It was deliberately left out of that sprint because it is not a copy deletion:
-  three of the four are whole-car planners that also account labour, fit fresh parts and mutate a
-  car, and **they disagree on labour on purpose** (`bands.ts` adds none, `serviceJobs.ts` adds
-  install labour, `plays.ts` adds remove plus install). So the shared thing is the per-part
-  decision and the two price atoms, not the loop around them.
-
-  **No guard rule was added for it**, precisely so it would not drag an unscoped refactor into a
-  consolidation sprint. Add one in the same change that lands the shared function.
-
 - [ ] **`rollingWindowShareCap` (1.5) rewards having sold anything, not concentration (recorded by
   sprint186.md, deliberately not fixed there).** The word-of-mouth share term is
   `1 + share * (cap - 1)` where `share` is this scene's recent matched deliveries over every

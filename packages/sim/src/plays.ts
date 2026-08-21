@@ -27,6 +27,7 @@ import { machinedPartPriceYen } from './machining'
 import { installLaborSlotsFor, removeLaborSlotsFor } from './jobs'
 import { marketValueYen, sensibleRepairTargetBand } from './marketValue'
 import { makeCarOrigin } from './provenance'
+import { partFixCostYen, sumFixCosts, type PartFixCost } from './repairJobs'
 import { createRng } from './rng'
 import { scrapShellPriceYen } from './selling'
 
@@ -101,17 +102,25 @@ export interface ModelPlayRankingRow {
  * The result of taking `car` up to `targetBand`, with the money and the time
  * always describing the same work.
  *
- * Three cases, one per slot:
+ * Every yen is the shared fix price (`partFixCostYen`), so this probe prices a
+ * slot exactly as the valuation does. Three cases, one per slot:
  *
  * - A repairable part below the target climbs at
  *   `restoration.repairStepFraction` per band step, costing
- *   `energyPerBandStepByToolTier[1]` per step. A removable part is bench work,
- *   so it additionally pays to come off and go back on.
+ *   `energyPerBandStepByToolTier[1]` energy per step. A removable part is bench
+ *   work, so it additionally pays to come off and go back on.
  * - A part with no repair path (scrap, or a replace-only consumable below
  *   `fine`) is replaced outright at its class's stock price and comes back
  *   mint, paying removal plus install labour.
  * - A genuinely missing slot is filled the same way, paying install labour
  *   only.
+ *
+ * NO PLAY BUYS A TOOL-HIRE DAY. What a play costs is the parts half of the
+ * bill (`sumFixCosts(...).partsYen`, the same half a car's value is priced
+ * from), because a day is plant access rather than a car's input: it buys a
+ * whole line for a whole day whatever else the shop does with it, and a merely
+ * tier 2 step can always be worked by hand for no yen. Charging one against a
+ * single flip's profit would be charging a fixed overhead against one play.
  *
  * Blocker chains are deliberately not priced: a real teardown pays to move
  * whatever sits in front of a buried slot and then to put it back, which is
@@ -136,6 +145,7 @@ function restoreToBand(
   const fitmentClass = fitmentClassForTier(model.tier)
   const origin = makeCarOrigin(car.id, carOriginLabel(model, car.year), 0)
   const parts = { ...car.parts }
+  const fixes: PartFixCost[] = []
   let costYen = 0
   let laborPoints = 0
 
@@ -159,7 +169,16 @@ function restoreToBand(
     const installed = parts[partId].installed
     if (!installed) {
       if (!isPartMissing(car, model, partId)) continue // legitimately absent
-      costYen += entry.stockReplacementPriceYenByClass[fitmentClass]
+      // An absent slot holds no part to price, so it is quoted the way a part
+      // past saving is: the stock replacement the fix price answers scrap with.
+      const fill = partFixCostYen(
+        entry,
+        context.stockPartByCarPartId[fitmentClass][partId]!,
+        'scrap',
+        targetBand,
+        context,
+      )
+      fixes.push(fill)
       laborPoints += installLaborSlotsFor(partId, context)
       fitFresh(partId)
       continue
@@ -167,12 +186,15 @@ function restoreToBand(
     if (bandIndex(installed.band) >= bandIndex(targetBand)) continue
     const catalogPart = context.partsById[installed.partId]
     if (!catalogPart) continue
-    if (!canRepair(installed.band, entry)) {
-      costYen += entry.stockReplacementPriceYenByClass[fitmentClass]
+    const fix = partFixCostYen(entry, catalogPart, installed.band, targetBand, context)
+    fixes.push(fix)
+    if (fix.jobKind === 'replace') {
       laborPoints += removeLaborSlotsFor(partId, context) + installLaborSlotsFor(partId, context)
       fitFresh(partId)
       continue
     }
+    // The money comes from the shared fix price above; the plan is read for its
+    // labour alone, which this probe accounts its own way.
     const plan = planPartRepair(
       installed.band,
       targetBand,
@@ -182,7 +204,6 @@ function restoreToBand(
       context.economy.restoration.repairStepFraction,
       context.economy.energy.energyPerBandStepByToolTier,
     )
-    costYen += plan.costYen
     laborPoints += plan.laborSlotsRequired
     // Every repair of a removable part is bench work: it comes off, it is
     // worked on the workshop floor, and it goes back on. Only the three fixed
@@ -192,6 +213,8 @@ function restoreToBand(
     }
     parts[partId] = { installed: { ...installed, band: targetBand } }
   }
+
+  costYen += sumFixCosts(fixes).partsYen
 
   let zoneState = car.zoneState
   if (zoneState) {

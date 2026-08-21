@@ -221,6 +221,57 @@ export function zonePanelsAtGrade(grade: Grade): ZoneStates {
 }
 
 /**
+ * A complete, valid `GameState` for a fresh solo garage: no cars, no crew, no
+ * parts, every tool line at the new-game floor and nothing hired. Every field
+ * is a neutral placeholder, so a test that overrides one field is asserting
+ * about that field alone. Override whatever the test is actually about.
+ */
+export function testGameState(overrides: Partial<GameState> = {}): GameState {
+  return {
+    day: 1,
+    seed: 1,
+    cashYen: 0,
+    reputationTier: 'unknown',
+    reputationPoints: 0,
+    sceneStanding: testSceneStanding(),
+    ownedCars: [],
+    partInventory: [],
+    staff: [],
+    staffAds: [],
+    jobs: [],
+    marketHeat: {},
+    marketLedger: { lotSupply: {}, playerSales: {} },
+    activeAuctionLots: [],
+    carsForSale: [],
+    pendingOffers: [],
+    serviceJobOffers: [],
+    activeServiceJobs: [],
+    serviceBayCount: 1,
+    parkingBayCount: 3,
+    serviceBayCarIds: [],
+    parkingCarIds: [],
+    forecourtBayCount: 2,
+    forecourtCarIds: [null, null],
+    graceParkingCarId: null,
+    energySpentToday: 0,
+    benchParts: {},
+    lift: { owned: false, hirePaidDay: null },
+    toolTiers: testToolTiers(),
+    pendingPartOrders: [],
+    cartPartIds: [],
+    carLedgers: {},
+    toolShopsOwned: [],
+    serviceJobLedgers: {},
+    inspectionVisit: null,
+    workbenchPartId: null,
+    machinePartId: null,
+    storyMissions: [],
+    machineHirePaidDayByGroup: {},
+    ...overrides,
+  }
+}
+
+/**
  * `mileageKm: 60_000` is deliberate: it's the neutral point of
  * `economy.json`'s `valuation.mileageFactorCurve` (factor exactly 1.0),
  * so a test built from this fixture without overriding mileage gets

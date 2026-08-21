@@ -74,8 +74,8 @@ describe('auctionRoomDemo lobby', () => {
     expect(packed!.lot.modelId).toBe('nissan-sunny-b12')
     expect(packed!.lot.car.symptoms).toHaveLength(1)
     const symptom = packed!.lot.car.symptoms[0]!
-    expect(symptom.symptomId).toBe('overheats-in-traffic')
-    expect(symptom.trueCauseId).toBe('cracked-block')
+    expect(symptom.symptomId).toBe('clunk-over-bumps')
+    expect(symptom.trueCauseId).toBe('rotted-subframe-mount')
     expect(symptom.remainingCauseIds.length).toBeGreaterThan(1)
 
     expect(packed!.incrementYen).toBe(incrementYenFor(packed!.roomReadYen, roomConfig))
@@ -83,14 +83,14 @@ describe('auctionRoomDemo lobby', () => {
 
     // The trap's whole point: the truth undercuts the read, clearing both
     // the trap-selection floor (`TRAP_VALUE_FRACTION`) and the real 'worse'
-    // verdict bar. The margin itself narrowed under the fearful room
-    // (knowledge-and-diagnosis.md section 4): the true cause here
-    // (`cracked-block`, the symptom's own scrap-band grenade) is close to
-    // the very candidate the room's own near-worst-case sheet already
-    // braces for, so the surprise is smaller than it was against the old
-    // plain-average sheet - measured at ~0.884 of the room's read, not a
-    // hair below 1 but no longer the wide margin a cheaper true cause still
-    // clears (see the steal case above).
+    // verdict bar. The margin is the gap between the value the true cause
+    // destroys and the work it owes, never the size of its repair bill: the
+    // room's own sheet deducts a near-worst-case fix COST (`roomSymptomCostYen`),
+    // so a cause that is merely dear to fix frightens the room by about what
+    // it costs and leaves nothing to find. Rot in the structure is the
+    // opposite, and this one lands at ~0.807 of the room's read - the wide
+    // margin the bound below exists to hold, so an ordinary repricing cannot
+    // flip it.
     expect(packed!.trueValueYen).toBeLessThan(packed!.roomReadYen * 0.89)
     expect(packed!.trueValueYen).toBeLessThan(packed!.roomReadYen * TRAP_VALUE_FRACTION)
     expect(packed!.verdict).toBe('worse')

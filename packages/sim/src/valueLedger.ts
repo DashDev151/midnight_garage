@@ -8,7 +8,7 @@ import {
   type GameState,
   type Part,
 } from '@midnight-garage/content'
-import { carCostToBandBreakdown, carCostToBandYen, carCostToMintYen } from './bands'
+import { carCostToBandBreakdown } from './bands'
 import type { ZoneBillLine } from './bodyPipeline'
 import type { SimContext } from './context'
 import { coherenceFactorForCar } from './derivedStats'
@@ -19,6 +19,7 @@ import {
   expectationForCar,
   foundationFactor,
   installedPartsValueYen,
+  restorationBillSplitFor,
   retentionFor,
 } from './marketValue'
 
@@ -53,7 +54,7 @@ export interface ValueLedger {
 /**
  * Decomposes `marketValueYen` into its ledger lines, built from the same
  * atoms the value formula itself consumes (`cleanValueYen`,
- * `carCostToBandYen`/`carCostToMintYen`, `expectationForCar`,
+ * `restorationBillSplitFor`, `expectationForCar`,
  * `coherenceFactorForCar`, `retentionFor`,
  * `installedPartsValueYen`, `foundationFactor`) - never a second value
  * computation. The base-term lines are rounded as telescoping differences of
@@ -94,18 +95,9 @@ export function valueLedgerFor(
   // heat-adjusted clean value.
   const mileageAdjusted = cleanValueYen(bookYen, car.mileageKm, 100, economy)
   const cleanValue = cleanValueYen(bookYen, car.mileageKm, heatPercent, economy)
-  const billToMintYen = carCostToMintYen(car, model, partsById, partsTaxonomyById, economy)
-  const billBelowYen = carCostToBandYen(
-    car,
-    model,
-    partsById,
-    partsTaxonomyById,
-    economy,
-    expectation.band,
-  )
-  const billAboveYen = billToMintYen - billBelowYen
-  const afterWear = cleanValue - marketRepairDiscount * billBelowYen
-  const raw = afterWear - expectation.beyondDiscount * billAboveYen
+  const bill = restorationBillSplitFor(car, model, partsById, partsTaxonomyById, economy)
+  const afterWear = cleanValue - marketRepairDiscount * bill.belowYen
+  const raw = afterWear - expectation.beyondDiscount * bill.aboveYen
   const base = Math.max(economy.bands.scrapValueFraction * cleanValue, raw)
 
   const lines: ValueLedgerLine[] = []
@@ -132,13 +124,13 @@ export function valueLedgerFor(
     pushCheckpoint('coherence', previousRounded * (1 - coherenceDiscount))
   }
 
-  // Sprint213.md item 3: the same gated, coherence-and-freshness-scaled
-  // premium `marketValueYen` adds - `billBelowYen` here is exactly its own
-  // gate figure, computed the same way from the same car.
+  // The same gated, coherence-and-freshness-scaled premium `marketValueYen`
+  // adds - the below-expectation bill here is exactly its own gate figure,
+  // computed the same way from the same car.
   const excellenceYen = excellencePremiumYen(
     model,
     cleanValue,
-    billBelowYen,
+    bill.belowYen,
     coherenceFactor,
     car.mileageKm,
     economy,
@@ -162,11 +154,11 @@ export interface RestorationValueLine {
   /** What bringing this slot to mint costs in work - `carCostToBandBreakdown`
    * at `'mint'`, unscaled. */
   billYen: number
-  /** The part of that bill still below the tier's expectation band, charged at
-   * `marketRepairDiscount`. */
+  /** What the work the market expects of this slot costs: the parts owed up to
+   * the tier's expectation band, charged at `marketRepairDiscount`. */
   belowBandBillYen: number
-  /** The rest of it, above the expectation band, charged at the tier's own
-   * `beyondDiscount`. */
+  /** The parts owed between the expectation band and mint, charged at the
+   * tier's own `beyondDiscount`. The two halves sum to `billYen` exactly. */
   aboveBandBillYen: number
   /** What this slot's condition costs the car's price, negative: the two halves
    * at their own discounts. */
@@ -196,13 +188,14 @@ export interface RestorationValueBreakdown {
  * `carCostToBandBreakdown`'s own contract grants. The split point is the tier's
  * expectation band (`expectationForCar`), the same one Stage B splits at, so a
  * slot's line and the whole-car figure can never disagree about which side of
- * the band a yen of work falls on.
+ * the band a yen of work falls on. Both halves are parts, exactly as Stage B's
+ * own split is: a car's value never counts a tool-hire day.
  *
  * Rounding is the only difference from the ledger: this rounds each line, while
  * the ledger rounds two telescoping cumulative checkpoints, so the sums agree
  * to within a yen or two rather than exactly. Nothing here is a second value
- * computation - both halves come out of the same two `carCostToBandBreakdown`
- * reads the ledger's own totals come out of.
+ * computation - every figure comes out of the same reads the ledger's own
+ * totals come out of.
  */
 export function restorationValueLinesFor(
   car: CarInstance,

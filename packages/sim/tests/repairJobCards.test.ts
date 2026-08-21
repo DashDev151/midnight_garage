@@ -98,7 +98,6 @@ function customerServiceJob(id: string, car: CarInstance): ServiceJob {
       {
         kind: 'slotCondition',
         requirement: { kind: 'slotCondition', carPartId: 'chassis', minBand: 'fine' },
-        minToolTier: 1,
       },
     ],
     car,

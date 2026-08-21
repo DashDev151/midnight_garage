@@ -2,7 +2,6 @@ import { z } from 'zod'
 import { CarInstanceSchema } from './carInstance'
 import { SellingChannelIdSchema } from './economy'
 import { SlotConditionRequirementSchema } from './requirement'
-import { ToolLevelSchema } from './toolLines'
 
 /**
  * The selling channel a service job unlocks on delivery, on exactly the
@@ -26,11 +25,12 @@ const ServiceJobUnlocksSellingChannelSchema = SellingChannelIdSchema.optional().
  * (sim). Any route that leaves the car in the required state satisfies it:
  * repair-and-refit, buy-new, or a donor-pulled part all count equally.
  *
- * `minToolTier` is the tool LEVEL this task's group needs before the work can
- * be offered without a hint or accepted at all - the capability ceiling, met
- * by a rung at 1 and 2 and by the covering shop at 3. Defaults to 1 (no
- * ceiling). Stays on the task wrapper, not inside the requirement - it gates
- * OFFERABILITY (`taskToolDeficit`), not the end state itself.
+ * The task carries no tool ceiling of its own: what a task needs is DERIVED
+ * from what it asks for (`taskToolBlocked`, sim/serviceJobs.ts). A `mint`
+ * band is Restore work and Restore is shop work, so that task waits for the
+ * covering shop; every other band, and every grade requirement, is reachable
+ * on day one by hiring the line or slogging it by hand. An authored ceiling
+ * would only ever be a second copy of that answer, free to drift from it.
  *
  * `requirement` is pinned to `SlotConditionRequirementSchema` specifically,
  * not the full `RequirementSpec` union - a service-job task only ever
@@ -48,7 +48,6 @@ const ServiceJobUnlocksSellingChannelSchema = SellingChannelIdSchema.optional().
 export const ServiceJobSlotTaskSchema = z.object({
   kind: z.literal('slotCondition').default('slotCondition'),
   requirement: SlotConditionRequirementSchema,
-  minToolTier: ToolLevelSchema.default(1),
 })
 
 export type ServiceJobSlotTask = z.infer<typeof ServiceJobSlotTaskSchema>
@@ -61,8 +60,8 @@ export type ServiceJobSlotTask = z.infer<typeof ServiceJobSlotTaskSchema>
  * the TEMPLATE as a placeholder only - generation (`generateDailyServiceJobOffers`)
  * rolls a real symptom from `context.symptoms` and overwrites the generated
  * job's own `tasks` with the picked id, so the template itself never pins a
- * single symptom to every job of its type. No `minToolTier`: a symptom job's
- * own tool gating lives on the diagnostic TESTS a candidate needs to open
+ * single symptom to every job of its type. A symptom job's own tool gating
+ * lives on the diagnostic TESTS a candidate needs to open
  * (`requiresToolTier`, `diagnosticTest.ts`), not on the job's offerability -
  * the player can always accept and start narrowing with whatever tools they
  * own today.

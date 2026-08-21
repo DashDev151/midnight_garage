@@ -24,8 +24,9 @@ import {
   generateAuctionCarInstance,
   stockInstanceFor,
 } from './auctions'
-import { bandIndex, bandsBelowExcludingScrap, planPartRepair } from './bands'
+import { bandIndex, bandsBelowExcludingScrap } from './bands'
 import { candidateFixCostYen, symptomResolved } from './diagnosis'
+import { partFixCostYen, sumFixCosts, type PartFixCost } from './repairJobs'
 import { craftOperationCapabilityGateReason } from './machiningJobs'
 import { applyReputationDelta, reputationAtLeast } from './reputation'
 import {
@@ -60,89 +61,98 @@ const EMPTY_LEDGER: CarLedger = {
   listingFeesYen: 0,
 }
 
+/** The level a line reads once the shop covering it is owned (`toolLevelsFor`,
+ * toolLines.ts). There is no rung above 2, so 3 means the shop and nothing
+ * else. */
+const SHOP_TOOL_LEVEL = 3
+
 /**
- * How many levels short the garage's tool line is of `task.minToolTier` -
- * `max(0, minToolTier - toolLevels[group])`. 0 means the task's capability
- * ceiling is met. Always 0 for a `resolveSymptom` task: a symptom job's own
- * tool gating lives on the diagnostic TESTS a candidate needs
+ * Whether one task asks for work this garage cannot be offered yet. What a
+ * task needs is DERIVED from what it asks for, never authored beside it.
+ *
+ * Only a `mint` band has a ceiling: mint is Restore work, and Restore is shop
+ * work whatever its recipe names (`cardRefusalFor`, repairJobs.ts), so the
+ * shop covering that part's group has to be owned before the commission is an
+ * honest one. Every other band is reachable on day one - the line is hired for
+ * the day, or slogged by hand - and so is any grade requirement, mint
+ * included: that route buys a part rather than working one, and a part is
+ * bought at any tier.
+ *
+ * Always false for a `resolveSymptom` task: a symptom job's own tool gating
+ * lives on the diagnostic TESTS a candidate needs to open
  * (`requiresToolTier`, `diagnosticTest.ts`), never on the job's own
  * offerability - see `ServiceJobSymptomTaskSchema`'s doc comment.
  */
-export function taskToolDeficit(
+export function taskToolBlocked(
   task: ServiceJobTask,
   toolLevels: ToolLevels,
   context: SimContext,
-): number {
-  if (task.kind !== 'slotCondition') return 0
-  const group = context.partsTaxonomyById[task.requirement.carPartId]?.group
-  if (!group) return 0
-  return Math.max(0, task.minToolTier - toolLevels[group])
+): boolean {
+  if (task.kind !== 'slotCondition') return false
+  const { carPartId, minBand, minGrade } = task.requirement
+  if (minGrade || minBand !== 'mint') return false
+  const group = context.partsTaxonomyById[carPartId]?.group
+  return group !== undefined && toolLevels[group] < SHOP_TOOL_LEVEL
 }
 
-export interface ToolDeficitSummary {
-  /** The largest per-task deficit across the whole task list. */
-  maxDeficit: number
-  /** Every DISTINCT group with a deficit above 0. */
-  deficientGroups: ComponentId[]
+export interface ToolGateSummary {
+  /** True when any task in the list is out of reach. */
+  blocked: boolean
+  /** Every DISTINCT group whose covering shop a blocked task is waiting on. */
+  blockedGroups: ComponentId[]
 }
 
-/** The whole task list's tool-level deficits, summarized once for the offer
- * rule, the accept gate, the store's `canAccept`/`upgradeHint`, and the
- * bots' own accept decisions - one computation, four callers. */
-export function toolDeficitSummary(
+/** The whole task list's tool gate, summarized once for the offer rule, the
+ * accept gate, the store's `canAccept`/`upgradeHint`, and the bots' own accept
+ * decisions - one computation, four callers. */
+export function toolGateSummary(
   tasks: readonly ServiceJobTask[],
   toolLevels: ToolLevels,
   context: SimContext,
-): ToolDeficitSummary {
-  let maxDeficit = 0
-  const deficientGroups: ComponentId[] = []
+): ToolGateSummary {
+  const blockedGroups: ComponentId[] = []
   for (const task of tasks) {
-    const deficit = taskToolDeficit(task, toolLevels, context)
-    if (deficit === 0) continue
-    if (deficit > maxDeficit) maxDeficit = deficit
+    if (!taskToolBlocked(task, toolLevels, context)) continue
     const group =
       task.kind === 'slotCondition'
         ? context.partsTaxonomyById[task.requirement.carPartId]?.group
         : undefined
-    if (group && !deficientGroups.includes(group)) deficientGroups.push(group)
+    if (group && !blockedGroups.includes(group)) blockedGroups.push(group)
   }
-  return { maxDeficit, deficientGroups }
+  return { blocked: blockedGroups.length > 0, blockedGroups }
 }
 
 /**
- * A template is OFFERABLE iff its max tool-level deficit is <= 1 AND at most
- * ONE distinct group is deficient - "one upgrade away," never two levels or
- * two lines out. Affordability is NOT checked: cash is the player's lever
- * and fluctuates daily.
+ * A template is OFFERABLE iff nothing on its task list is out of reach - in
+ * practice, iff it asks for no Restore this garage has no shop for. Everything
+ * else is offered from day one and paid for in hire fees or in energy.
+ * Affordability is NOT checked: cash is the player's lever and fluctuates
+ * daily.
  */
 export function isTemplateOfferable(
   tasks: readonly ServiceJobTask[],
   toolLevels: ToolLevels,
   context: SimContext,
 ): boolean {
-  const { maxDeficit, deficientGroups } = toolDeficitSummary(tasks, toolLevels, context)
-  return maxDeficit <= 1 && deficientGroups.length <= 1
+  return !toolGateSummary(tasks, toolLevels, context).blocked
 }
 
 /**
- * The UPGRADE-HINT string an offer with a deficit carries:
- * "needs <the next thing that would close it>" - that group's next rung while
- * one is left, and otherwise the shop covering the group, since above the top
- * rung a shop is the only thing that lifts a line. Null when there is no
- * deficit. Derived live against the current levels, so it clears itself the
- * moment the purchase lands, rather than being stamped stale onto the offer.
+ * The UPGRADE-HINT string a blocked task list carries: "needs <the shop that
+ * would open it>". A Restore is the only work a purchase opens, and only the
+ * covering shop opens it, so there is exactly one thing to name. Null when
+ * nothing is blocked. Derived live against the current levels, so it clears
+ * itself the moment the purchase lands, rather than being stamped stale onto
+ * the offer.
  */
 export function upgradeHintFor(
   tasks: readonly ServiceJobTask[],
   toolLevels: ToolLevels,
   context: SimContext,
 ): string | null {
-  const { deficientGroups } = toolDeficitSummary(tasks, toolLevels, context)
-  const group = deficientGroups[0]
+  const group = toolGateSummary(tasks, toolLevels, context).blockedGroups[0]
   if (!group) return null
-  const nextTier = context.toolLines[group].tiers[toolLevels[group]]
-  const name = nextTier ? nextTier.displayName : context.toolShopByGroup[group].displayName
-  return `needs ${name}`
+  return `needs ${context.toolShopByGroup[group].displayName}`
 }
 
 /**
@@ -215,19 +225,19 @@ function fittingPartsForRequirement(
 }
 
 export interface ServiceJobCostBreakdown {
-  /** Sum of every task's material cost: a grade-requirement task's median
-   * fitting-part price, a band-only task's banded-steps repair cost. */
+  /** Sum of every task's CASH cost: a grade-requirement task's median
+   * fitting-part price, a repair task's banded parts bill, and either way the
+   * day's hire the work needs, folded in before any margin so no quoted job
+   * is a loss. */
   taskCostYen: number
   /** Total labor slots the task list nominally takes: every task's whole
    * physical chain (`taskLaborChain`, taskLaborChain.ts) - clearing and
    * refitting whatever blocks the slot, pulling the part (or its whole
-   * assembly) off, the bench work, and the refit that actually delivers
-   * the improvement - each stage priced at the multiplier the shop
-   * generating this quote actually faces right now (`state`), never a
-   * hypothetical equipped one. A repair-route task's bench work is the
-   * banded climb at level 1 (a market baseline, independent of the shop's
-   * own tool tier); a buy-new task's is the (currently free) bench swap-in
-   * when the slot is an assembly member, or nothing at all otherwise. */
+   * assembly) off, the bench job, and the refit that actually delivers the
+   * improvement - every stage at base rate. A repair-route task's bench work
+   * is its repair job's own recipe steps; a buy-new task's is the bench
+   * swap-in when the slot is an assembly member, or nothing at all
+   * otherwise. */
   laborSlots: number
 }
 
@@ -236,28 +246,42 @@ export interface ServiceJobCostBreakdown {
  * split out so the profitability invariant test can inspect the same
  * numbers a real offer derives from, not just the final rounded payout.
  *
- * A task with no `minGrade` prices the bench-repair route (its own
- * installed part, if repairable and NOT scrap, climbed to `minBand`);
- * everything else - a `minGrade` requirement, a scrap or missing slot, or a
- * non-repairable part - prices the buy-new route (the narrowest fitting
- * tier's median price) instead. Neither an empty nor a scrap slot counts as
- * "already done" for a band-only task: both are genuinely outstanding
- * work, priced as the replacement they actually need. The only real
- * 0-cost/labor case is a task ALREADY satisfied (`planPartRepair` itself
- * returns 0 when there's nothing left to climb).
+ * A task with no `minGrade` prices the REPAIR route (`partFixCostYen`,
+ * repairJobs.ts: the smallest job whose finished band reaches `minBand`, its
+ * banded parts bill, and one day's hire only where that job cannot be worked by
+ * hand at all); everything else - a `minGrade` requirement, a scrap or missing
+ * slot, or a non-repairable part - prices the buy-new route (the narrowest
+ * fitting tier's median price, and no day, since fitting a fresh part works no
+ * recipe) instead. Neither an empty nor a scrap slot counts as "already
+ * done" for a band-only task: both are genuinely outstanding work, priced as
+ * the replacement they actually need. The only real 0-cost/labor case is a
+ * task ALREADY satisfied, which `partFixCostYen` prices at nothing, fee
+ * included.
  *
- * Reuses `planPartRepair` (bands.ts) directly for the material cost, and
- * `taskLaborChain` (taskLaborChain.ts) for the labour - the ONE cost
- * pipeline and the ONE labour pipeline, never a second bill implementation.
- * A repair-route task's cost derives from the installed instance's own
- * catalog `priceYen` (`context.partsById[installed.partId]`) times
- * `economy.restoration.repairStepFraction`, never a car/model-derived
- * factor.
+ * Reuses `partFixCostYen` for the money and `taskLaborChain`
+ * (taskLaborChain.ts) for the labour - the ONE fix-price atom and the ONE
+ * labour pipeline, never a second bill implementation.
  *
- * `state` is the real shop generating this quote, not a hypothetical one -
- * `taskLaborChain` prices every gated stage of the chain (blocker removal,
- * the pull, the refit) at whatever machine multiplier that shop actually
- * faces right now.
+ * The quote assumes the hire route throughout, which is why any fee is folded
+ * in before any margin and why the labour is never slog-multiplied: a garage
+ * that hires pays cash and works at base rate. A player who owns the line
+ * keeps the fee as margin; one who works by hand pays the difference in energy
+ * rather than in yen. Nothing here reads the shop's own tools, so a customer's
+ * quote never moves with what is bolted to the wall.
+ *
+ * A fee is rare, because a tier 2 tool is a rate rather than a wall: a day is
+ * named only where the bench job genuinely cannot be worked by hand
+ * (`forcedHireDayFor`), which on the shipped ladder is a welded Rebuild and
+ * nothing else. Most quotes therefore price their parts and their labour and
+ * nothing more, and a buy-new task never names a day at all: it works no
+ * recipe, and reaching even a buried slot costs energy rather than yen
+ * (`accessRoute`, jobs.ts). A `mint` task's Restore carries no fee either, and
+ * is only ever offered to a garage that owns the covering shop
+ * (`taskToolBlocked`).
+ *
+ * And only one day's hire rides on a LINE, however many tasks want it: a job
+ * freshening dampers and springs together hires the suspension line once, so
+ * the task list totals through `sumFixCosts` rather than task by task.
  *
  * A `resolveSymptom` task is skipped outright here: its own payout prices
  * through `deriveSymptomJobPayoutYen` (the weighted-mean chain-priced cost
@@ -269,11 +293,8 @@ export function serviceJobCostBreakdown(
   car: CarInstance,
   model: CarModel,
   context: SimContext,
-  state: GameState,
 ): ServiceJobCostBreakdown {
-  const { repairStepFraction } = context.economy.restoration
-  const { energyPerBandStepByToolTier } = context.economy.energy
-  let taskCostYen = 0
+  const fixes: PartFixCost[] = []
   let laborSlots = 0
   for (const task of tasks) {
     if (task.kind !== 'slotCondition') continue
@@ -281,42 +302,44 @@ export function serviceJobCostBreakdown(
     const entry = context.partsTaxonomyById[carPartId]
     if (!entry) continue
 
+    // A grade requirement always buys fresh, so it never asks the atom what
+    // the fitted part could be worked up to; anything else does, and the
+    // atom's own answer decides whether this task is repaired or replaced.
     const installed = car.parts[carPartId].installed
-    const canBenchRepair = !minGrade && installed && installed.band !== 'scrap' && entry.repairable
-    if (canBenchRepair) {
-      const catalogPart = context.partsById[installed.partId]
-      if (!catalogPart) continue
-      const plan = planPartRepair(
-        installed.band,
-        minBand,
-        1,
-        entry,
-        catalogPart.priceYen,
-        repairStepFraction,
-        energyPerBandStepByToolTier,
-      )
-      taskCostYen += plan.costYen
-      laborSlots += taskLaborChain(car, carPartId, minBand, context, state).totalSlots
+    const catalogPart = installed ? context.partsById[installed.partId] : undefined
+    const fix =
+      !minGrade && installed && catalogPart
+        ? partFixCostYen(entry, catalogPart, installed.band, minBand, context)
+        : null
+    if (fix && fix.jobKind !== 'replace') {
+      fixes.push(fix)
+      laborSlots += taskLaborChain(car, carPartId, fix.jobKind, context).totalSlots
       continue
     }
 
     // The buy-new route: either a grade requirement (always buys fresh), or
     // a band-only requirement the slot can't reach by repair (scrap, missing,
     // or non-repairable). Both are genuinely outstanding and genuinely priced
-    // here as a replacement.
+    // here as a replacement: the part and the labour to fit it, and no day at
+    // all. Fitting a fresh part works no recipe, so nothing about it can force
+    // a machine, and reaching a buried slot is a rate rather than a wall.
     const candidates = fittingPartsForRequirement(carPartId, minGrade ?? 'stock', model, context)
-    const partCostYen = medianYen(candidates.map((part) => part.priceYen))
-    taskCostYen += partCostYen
-    laborSlots += taskLaborChain(car, carPartId, 'install', context, state).totalSlots
+    const chain = taskLaborChain(car, carPartId, 'install', context)
+    fixes.push({
+      jobKind: 'replace',
+      partsYen: medianYen(candidates.map((part) => part.priceYen)),
+      hireFeeYen: 0,
+      hireLine: null,
+    })
+    laborSlots += chain.totalSlots
   }
-  return { taskCostYen, laborSlots }
+  return { taskCostYen: sumFixCosts(fixes).totalYen, laborSlots }
 }
 
 /**
  * The payout formula: `round((taskCostYen + laborSlots * laborRateYen) *
  * margin + calloutFeeYen)`. Computed once, at generation time, against the
- * specific customer car just rolled and the real shop offering it (`state`)
- * - never re-derived once an offer exists.
+ * specific customer car just rolled - never re-derived once an offer exists.
  *
  * **The profitability invariant** (tested as a property in
  * `tests/serviceJobPayout.test.ts`): for every template x every roster model,
@@ -333,10 +356,9 @@ export function deriveServiceJobPayoutYen(
   car: CarInstance,
   model: CarModel,
   context: SimContext,
-  state: GameState,
   marginRoll: number,
 ): number {
-  const { taskCostYen, laborSlots } = serviceJobCostBreakdown(tasks, car, model, context, state)
+  const { taskCostYen, laborSlots } = serviceJobCostBreakdown(tasks, car, model, context)
   const { laborRateYen, calloutFeeYen } = context.economy.serviceJobs
   return Math.round((taskCostYen + laborSlots * laborRateYen) * marginRoll + calloutFeeYen)
 }
@@ -359,22 +381,20 @@ function rollMargin(context: SimContext, rng: Rng): number {
  *
  * Computed once, at generation time, against the specific customer car just
  * rolled (with the true cause's own part already at `cause.setBand`,
- * `applySpecificSymptom`) and the real shop offering it (`state`) - never
- * re-derived once the offer exists, matching every other service-job
- * payout in this codebase.
+ * `applySpecificSymptom`) - never re-derived once the offer exists, matching
+ * every other service-job payout in this codebase.
  */
 export function deriveSymptomJobPayoutYen(
   symptom: Symptom,
   car: CarInstance,
   model: CarModel,
   context: SimContext,
-  state: GameState,
   marginRoll: number,
 ): number {
   const totalWeight = symptom.causes.reduce((sum, cause) => sum + cause.weight, 0)
   if (totalWeight <= 0) return 0
   const weightedMeanCostYen = symptom.causes.reduce((sum, cause) => {
-    const cost = candidateFixCostYen(car, model, cause, state, context)
+    const cost = candidateFixCostYen(car, model, cause, context)
     return sum + (cause.weight / totalWeight) * cost
   }, 0)
   const { calloutFeeYen } = context.economy.serviceJobs
@@ -624,16 +644,15 @@ function templateOfferWeight(template: ServiceJobType, context: SimContext): num
  * draw. Each carries a real customer car (rolled like an auction car, then
  * run through `forceTasksOutstanding` so the template's tasks are
  * guaranteed genuinely outstanding on it) and a payout derived from the
- * template's own task list against that specific car and the real shop
- * offering it (`deriveServiceJobPayoutYen`) - never an authored flat range.
+ * template's own task list against that specific car
+ * (`deriveServiceJobPayoutYen`) - never an authored flat range.
  * Each offer's board lifetime is rolled uniformly per offer from
  * `economy.serviceJobs.offerLifetimeDaysRange`. `state.reputationTier`
  * gates which template TIERS are even in the candidate pool; within that
  * pool, `state`'s own tool levels (`toolLevelsFor`) drive the offer rule
- * (`isTemplateOfferable`): a template at most one tool-level upgrade away in
- * at most one line is offerable - shown as an upgrade-hint offer when a
- * deficit exists - and anything further out is
- * not generated at all. `currentYear` (default Infinity = unrestricted)
+ * (`isTemplateOfferable`): a template asking for a Restore this garage has no
+ * covering shop for is not generated at all, and everything else is.
+ * `currentYear` (default Infinity = unrestricted)
  * excludes still-unreleased models and clamps the rolled car's year, same
  * as auction generation.
  *
@@ -693,7 +712,7 @@ export function generateDailyServiceJobOffers(
       if (!built) continue
       const { car, symptom } = built
       const margin = rollMargin(context, rng)
-      const payoutYen = deriveSymptomJobPayoutYen(symptom, car, model, context, state, margin)
+      const payoutYen = deriveSymptomJobPayoutYen(symptom, car, model, context, margin)
       const symptomTask: ServiceJobSymptomTask = { kind: 'resolveSymptom', symptomId: symptom.id }
       offers.push({
         id: `svc-${day}-${i}`,
@@ -733,7 +752,7 @@ export function generateDailyServiceJobOffers(
     // the payout (and the job itself) never prices in vacuous "work".
     const car = forceTasksOutstanding(rolledCar, template.tasks, context, rng, day)
     const margin = rollMargin(context, rng)
-    const payoutYen = deriveServiceJobPayoutYen(template.tasks, car, model, context, state, margin)
+    const payoutYen = deriveServiceJobPayoutYen(template.tasks, car, model, context, margin)
     offers.push({
       id: `svc-${day}-${i}`,
       typeId: template.id,
@@ -797,11 +816,11 @@ export function resolveRejectServiceJobOffer(
  * bot batch loop (one queued accept per call, matching every other instant
  * resolver's shape).
  *
- * An offer with any tool-level deficit (a task whose `minToolTier` exceeds
- * the line's current level) is refused - it was generated as an
- * upgrade-hint offer and becomes acceptable the moment the upgrade lands,
- * since the deficit is re-checked live here rather than stamped at
- * generation time.
+ * An offer asking for a Restore this garage has no covering shop for is
+ * refused (`taskToolBlocked`) and becomes acceptable the moment the shop
+ * lands, since the gate is re-checked live here rather than stamped at
+ * generation time. Generation already excludes such a template, so this is
+ * defence in depth against a stale offer.
  *
  * A signature template's gate is re-checked live here too (reason
  * `'operation'`) - defensive, since generation already excludes a template
@@ -816,7 +835,7 @@ export function resolveAcceptServiceJob(
   if (!offer) return { state, log: [] }
 
   const toolLevels = toolLevelsFor(state, context)
-  if (toolDeficitSummary(offer.tasks, toolLevels, context).maxDeficit > 0) {
+  if (toolGateSummary(offer.tasks, toolLevels, context).blocked) {
     return {
       state,
       log: [{ type: 'acquisition-blocked', kind: 'service-accept', reason: 'tool-tier' }],

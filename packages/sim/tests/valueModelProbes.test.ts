@@ -26,11 +26,12 @@ import {
 } from '../src/auctions'
 import {
   bandIndex,
+  canRepair,
   carCostToBandYen,
   carCostToMintYen,
   hasForcedInduction,
-  planGroupRepair,
 } from '../src/bands'
+import { partFixCostYen, sumFixCosts } from '../src/repairJobs'
 import { computeRosterBalanceProbe } from '../src/balanceProbes'
 import { ALL_ZONE_IDS, isMetalZoneState, severityThresholdForBand } from '../src/bodyPipeline'
 import { buildSimContext } from '../src/context'
@@ -393,25 +394,26 @@ describe('sane-flip / salvage-flip probes (Sprint 47 decision 6)', () => {
   const ENTRY_MODEL = CARS.find((c) => c.id === 'honda-city-e-aa')
   if (!ENTRY_MODEL) throw new Error('fixture entry-tier car missing from seed content')
 
-  /** Total yen to bring every repairable part in `car` from its current
-   * band to `targetBand`, across all six real groups - the same pipeline a
-   * real "repair all" confirm would charge (no consumables fee on top). */
+  /** Total yen to bring every occupied slot of `car` from its current band to
+   * `targetBand`, priced through the shared fix price (`partFixCostYen`): the
+   * banded parts bill, and a stock replacement for a slot no job can save. No
+   * tool-hire day, exactly as the whole-car bill charges none
+   * (`carCostToBandYen`). The same money, walked slot by slot so the probe
+   * still does its own arithmetic rather than reading the buy side's own answer
+   * back. */
   function totalRepairCostYen(car: CarInstance, targetBand: 'fine' | 'mint'): number {
-    let total = 0
-    for (const groupId of ComponentIdSchema.options) {
-      total += planGroupRepair(
-        car,
-        groupId,
-        targetBand,
-        testToolTiers(),
-        CONTEXT.partIdsByGroup,
-        CONTEXT.partsById,
-        CONTEXT.partsTaxonomyById,
-        CONTEXT.economy.restoration.repairStepFraction,
-        CONTEXT.economy.energy.energyPerBandStepByToolTier,
-      ).costYen
+    const fixes = []
+    for (const partId of ALL_CAR_PART_IDS) {
+      const entry = PARTS_TAXONOMY_BY_ID[partId]
+      const installed = car.parts[partId].installed
+      if (!entry || !installed) continue
+      const catalogPart = PARTS_BY_ID[installed.partId]
+      if (!catalogPart) continue
+      fixes.push(
+        partFixCostYen(entry, catalogPart, installed.band, targetBand, { economy: ECONOMY }),
+      )
     }
-    return total
+    return sumFixCosts(fixes).partsYen
   }
 
   /** HARD-GATED: an average-condition common-tier car, bought at reserve,
@@ -441,8 +443,9 @@ describe('sane-flip / salvage-flip probes (Sprint 47 decision 6)', () => {
       ECONOMY,
     )
 
-    // Measured: buy ~Y169,295, repair ~Y113,600, sell ~Y535,930 -> margin
-    // ~+Y253,035 - a real, comfortable profit on ordinary worn->fine work.
+    // A real profit on ordinary worn->fine work: the parts bill is small, and
+    // the day-hire beside it is one day per tool line the work touches rather
+    // than one per slot, so a whole-car freshen-up buys at most six days.
     const marginYen = sellPriceYen - buyPriceYen - repairCostYen
     expect(marginYen).toBeGreaterThan(0)
   })
@@ -533,37 +536,36 @@ function uniformClassedCarParts(
   ) as CarInstance['parts']
 }
 
-/** Bumps every part `planGroupRepair` finds eligible in `groupId` to
- * `targetBand`, returning the updated car and the real yen cost - the same
- * pipeline a "repair to band" confirm click charges. */
+/** Bumps every repairable part of `groupId` still below `targetBand` up to it,
+ * returning the updated car and the real yen cost through the shared fix price
+ * (`partFixCostYen`): the parts, and no tool-hire day, exactly as every other
+ * whole-car and whole-group bill charges none. A slot no job can save (a scrap
+ * or replace-only one) is left alone and uncharged - putting one right is a
+ * purchase, which `replaceConsumable` below prices. */
 function applyGroupRepairToBand(
   car: CarInstance,
   groupId: (typeof ComponentIdSchema.options)[number],
   targetBand: 'worn' | 'fine' | 'mint',
 ): { car: CarInstance; costYen: number } {
-  const plan = planGroupRepair(
-    car,
-    groupId,
-    targetBand,
-    testToolTiers(),
-    CONTEXT.partIdsByGroup,
-    CONTEXT.partsById,
-    CONTEXT.partsTaxonomyById,
-    CONTEXT.economy.restoration.repairStepFraction,
-    CONTEXT.economy.energy.energyPerBandStepByToolTier,
-  )
   let parts = car.parts
-  for (const partId of plan.partIds) {
-    const installed = parts[partId].installed!
+  const fixes = []
+  for (const partId of CONTEXT.partIdsByGroup[groupId]) {
+    const entry = PARTS_TAXONOMY_BY_ID[partId]
+    const installed = parts[partId].installed
+    if (!entry || !installed || !canRepair(installed.band, entry)) continue
+    if (bandIndex(installed.band) >= bandIndex(targetBand)) continue
+    const catalogPart = PARTS_BY_ID[installed.partId]
+    if (!catalogPart) continue
+    fixes.push(partFixCostYen(entry, catalogPart, installed.band, targetBand, { economy: ECONOMY }))
     parts = { ...parts, [partId]: { installed: { ...installed, band: targetBand } } }
   }
-  return { car: { ...car, parts }, costYen: plan.costYen }
+  return { car: { ...car, parts }, costYen: sumFixCosts(fixes).partsYen }
 }
 
 /** Replaces one non-repairable consumable (tyres/brakePadsDiscs/clutch) with
- * a fresh, class-correct mint stock part - the real "Replace" cost for a
- * part `planGroupRepair` always prices at zero (it never touches
- * non-repairable slots). */
+ * a fresh, class-correct mint stock part - the shared fix price's own
+ * `'replace'` answer for a slot no job can save, which is why it carries no
+ * hire day: nothing is worked, a part is bought. */
 function replaceConsumable(
   car: CarInstance,
   model: CarModel,
@@ -572,7 +574,11 @@ function replaceConsumable(
   const fitmentClass = fitmentClassForTier(model.tier)
   const stockPart = CONTEXT.stockPartByCarPartId[fitmentClass][carPartId]
   const entry = PARTS_TAXONOMY_BY_ID[carPartId]
-  const costYen = entry.stockReplacementPriceYenByClass[fitmentClass]
+  const installed = car.parts[carPartId].installed!
+  const fix = partFixCostYen(entry, PARTS_BY_ID[installed.partId]!, installed.band, 'mint', {
+    economy: ECONOMY,
+  })
+  const costYen = fix.partsYen
   const parts = {
     ...car.parts,
     [carPartId]: {

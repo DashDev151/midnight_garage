@@ -88,6 +88,10 @@ New mechanisms: none. This sprint only deletes, re-points scripts, and re-pins. 
 - `bands.test.ts` / `jobs.test.ts`: delete the describes of deleted symbols; surviving
   atoms keep their tests. Every OTHER suite must pass; any unexpected failure is
   STOP-and-report (directive 17 case (b) until proven otherwise).
+- KNOWN, found in sprint 226 and deliberately left: `jobs.test.ts` (around line 458)
+  still reads `economy.machineShopAssist.machinelessLaborMultiplier` while the code under
+  test reads `toolHire.slogMultiplier`. It passes only because both are 3, so it goes red
+  the moment `machineShopAssist` is deleted here. Re-point it, do not delete it.
 
 ## Tasks
 

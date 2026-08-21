@@ -19,6 +19,7 @@ import {
   type ZoneBillLine,
 } from './bodyPipeline'
 import { crewEnergySaved, perfectionistCostMultiplier, type CrewSkillContext } from './crewSkills'
+import { partFixCostYen, sumFixCosts, type FixCostContext, type PartFixCost } from './repairJobs'
 
 /** The banded parts model's core math - band ordering, climbing, repair
  * cost, and the cost-weighted value shim; every other sim module that
@@ -197,47 +198,54 @@ export function carCostToMintYen(
   return carCostToBandYen(car, model, partsById, partsTaxonomyById, economy, 'mint')
 }
 
+/** A slot whose money is a straight purchase rather than a job: a fresh part
+ * for a genuinely empty slot, or the body pipeline's own bill for a
+ * zone-derived carrier. Neither hires a day. */
+function purchaseFix(partsYen: number): PartFixCost {
+  return { jobKind: 'replace', partsYen, hireFeeYen: 0, hireLine: null }
+}
+
 /**
  * What bringing ONE slot of `car` up to `targetBand` costs - the atom the
  * whole-car bill sums and the per-slot breakdown reports unsummed, so the two
  * can never answer differently for the same slot.
  *
+ * An occupied slot is priced by `partFixCostYen`, the shared fix price. The
+ * atom also names the day's hire whichever job reaches the target would want,
+ * and the whole-car sum deliberately spends only the PARTS half of it: a day is
+ * plant access rather than a per-car input (`carCostToBandYen`).
+ *
  * Null when the slot is not a line on the bill at all: an installed SKU the
  * catalogue cannot resolve, or a legitimately empty slot (forced induction on
  * a naturally aspirated car). Both contribute nothing, which is why the sum
- * reads a null as zero.
+ * skips a null.
  */
-function partCostToBandYen(
+function partFixToBand(
   car: CarInstance,
   model: CarModel,
   partId: CarPartId,
   entry: CarPartTaxonomyEntry,
   partsById: Readonly<Record<string, Part>>,
-  economy: EconomyConfig,
+  fixContext: FixCostContext,
   targetBand: ConditionBand,
   carFitmentClass: PartFitmentClass,
-): number | null {
+): PartFixCost | null {
   // A body value carrier on the zone model prices through the pipeline
   // (materials + panels, money only - labour is never priced in yen): the
   // generic per-part formula below never sees it.
   if (car.zoneState && isBodyDerivedPart(partId)) {
-    return bodyPartRepairBillYen(partId, car.zoneState, targetBand, carFitmentClass, partsById)
+    return purchaseFix(
+      bodyPartRepairBillYen(partId, car.zoneState, targetBand, carFitmentClass, partsById),
+    )
   }
   const installed = car.parts[partId].installed
   if (installed) {
     const catalogPart = partsById[installed.partId]
     if (!catalogPart) return null
-    return costToBandYen(
-      installed.band,
-      targetBand,
-      entry,
-      catalogPart.priceYen,
-      economy.restoration.repairStepFraction,
-      catalogPart.fitmentClass,
-    )
+    return partFixCostYen(entry, catalogPart, installed.band, targetBand, fixContext)
   }
   if (isPartMissing(car, model, partId)) {
-    return entry.stockReplacementPriceYenByClass[carFitmentClass]
+    return purchaseFix(entry.stockReplacementPriceYenByClass[carFitmentClass])
   }
   return null
 }
@@ -251,8 +259,22 @@ function billablePartIds(
   return (Object.keys(car.parts) as CarPartId[]).filter((partId) => partsTaxonomyById[partId])
 }
 
-/** The whole-car form of `costToBandYen`: what it costs to bring every part
- * of `car` up to `targetBand`. `carCostToMintYen` is this at `'mint'`. */
+/**
+ * The whole-car form of `costToBandYen`: the PARTS it takes to bring every slot
+ * of `car` up to `targetBand`, and never a day's tool hire.
+ *
+ * A hire day is not a per-car cost and is deliberately left out of every
+ * whole-car bill. A day buys a whole tool LINE for a whole DAY
+ * (`toolHire.maxHiredLinesPerDay` is one, and `toolHire.amortisationDays` is
+ * what it is measured against), so it is plant access spread over everything
+ * the shop does that day rather than an input to one car; and a step that is
+ * merely tier 2 can always be done by hand at `toolHire.slogMultiplier` energy
+ * for no yen at all, so most of those days are never bought. The one bill that
+ * genuinely buys a day is a customer QUOTE, which is a job rather than a car:
+ * `serviceJobCostBreakdown` folds it in there, per line, through `sumFixCosts`.
+ *
+ * `carCostToMintYen` is this at `'mint'`.
+ */
 export function carCostToBandYen(
   car: CarInstance,
   model: CarModel,
@@ -262,28 +284,30 @@ export function carCostToBandYen(
   targetBand: ConditionBand,
 ): number {
   const carFitmentClass = fitmentClassForTier(model.tier)
-  let total = 0
+  const fixContext: FixCostContext = { economy }
+  const fixes: PartFixCost[] = []
   for (const partId of billablePartIds(car, partsTaxonomyById)) {
-    total +=
-      partCostToBandYen(
-        car,
-        model,
-        partId,
-        partsTaxonomyById[partId]!,
-        partsById,
-        economy,
-        targetBand,
-        carFitmentClass,
-      ) ?? 0
+    const fix = partFixToBand(
+      car,
+      model,
+      partId,
+      partsTaxonomyById[partId]!,
+      partsById,
+      fixContext,
+      targetBand,
+      carFitmentClass,
+    )
+    if (fix) fixes.push(fix)
   }
-  return total
+  return sumFixCosts(fixes).partsYen
 }
 
 /** One slot's own share of the whole-car restoration bill. */
 export interface CarBillLine {
   partId: CarPartId
-  /** What bringing this slot to the target costs. Zero for a slot already at
-   * or above it. */
+  /** What bringing this slot to the target costs in PARTS. Zero for a slot
+   * already at or above it. Never a hire day: a whole-car bill buys no days at
+   * all (`carCostToBandYen`). */
   yen: number
   /** Where the money falls across the nine body zones - present only for the
    * two body value carriers (`bodywork`, `paint`) on a car carrying
@@ -294,19 +318,22 @@ export interface CarBillLine {
 /** The restoration bill, slot by slot, with the total it sums to. */
 export interface CarBillBreakdown {
   lines: CarBillLine[]
+  /** The lines summed, exactly `carCostToBandYen` for the same car and
+   * target. */
   totalYen: number
 }
 
 /**
  * `carCostToBandYen` unsummed: the same bill, slot by slot, and per zone for
- * the two body carriers. `totalYen` and the line sum both equal
- * `carCostToBandYen` for the same car and target, exactly, because both walk
- * the same slots through the same `partCostToBandYen` atom
- * (`tests/carBillBreakdown.test.ts` holds them equal per roster model).
+ * the two body carriers. The lines sum exactly to `totalYen`, which equals
+ * `carCostToBandYen` for the same car and target, because both walk the same
+ * slots through the same `partFixToBand` atom and total them through the same
+ * `sumFixCosts` (`tests/carBillBreakdown.test.ts` holds both per roster
+ * model).
  *
- * The bill is a literal sum over slots, and every multiplier the value formula
- * applies to it (`marketRepairDiscount`, the tier's `beyondDiscount`) is
- * band-independent, so it scales each line identically: a caller may scale
+ * The bill is a literal sum over slots, and every multiplier the value
+ * formula applies to it (`marketRepairDiscount`, the tier's `beyondDiscount`)
+ * is band-independent, so it scales each line identically: a caller may scale
  * these lines to show what one slot's condition costs the car's price. Scaling
  * the lines and then summing can differ from scaling the sum by a fraction of
  * a yen, since a discount is not exactly representable in binary; the lines
@@ -321,32 +348,34 @@ export function carCostToBandBreakdown(
   targetBand: ConditionBand,
 ): CarBillBreakdown {
   const carFitmentClass = fitmentClassForTier(model.tier)
+  const fixContext: FixCostContext = { economy }
   const lines: CarBillLine[] = []
-  let totalYen = 0
+  const fixes: PartFixCost[] = []
   for (const partId of billablePartIds(car, partsTaxonomyById)) {
-    const yen = partCostToBandYen(
+    const fix = partFixToBand(
       car,
       model,
       partId,
       partsTaxonomyById[partId]!,
       partsById,
-      economy,
+      fixContext,
       targetBand,
       carFitmentClass,
     )
-    if (yen === null) continue
+    if (!fix) continue
+    fixes.push(fix)
     const zones =
       car.zoneState && isBodyDerivedPart(partId)
         ? bodyPartRepairBillByZoneYen(partId, car.zoneState, targetBand, carFitmentClass, partsById)
         : undefined
-    lines.push({ partId, yen, ...(zones ? { zones } : {}) })
-    totalYen += yen
+    lines.push({ partId, yen: fix.partsYen, ...(zones ? { zones } : {}) })
   }
-  return { lines, totalYen }
+  return { lines, totalYen: sumFixCosts(fixes).partsYen }
 }
 
-/** Sum of `costToMintYen` across one group only - what a group-level repair
- * job actually costs to fully mint, scoped to `groupId`. */
+/** Sum of the shared fix price across one group only - what a group-level
+ * repair job actually costs to fully mint, scoped to `groupId`. The parts
+ * alone, like every other whole-car and whole-group bill. */
 export function groupCostToMintYen(
   car: CarInstance,
   model: CarModel,
@@ -356,32 +385,25 @@ export function groupCostToMintYen(
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   economy: EconomyConfig,
 ): number {
-  const { repairStepFraction } = economy.restoration
   const carFitmentClass = fitmentClassForTier(model.tier)
-  let total = 0
+  const fixContext: FixCostContext = { economy }
+  const fixes: PartFixCost[] = []
   for (const partId of partIdsByGroup[groupId]) {
     const entry = partsTaxonomyById[partId]
     if (!entry) continue
-    if (car.zoneState && isBodyDerivedPart(partId)) {
-      total += bodyPartRepairBillYen(partId, car.zoneState, 'mint', carFitmentClass, partsById)
-      continue
-    }
-    const installed = car.parts[partId].installed
-    if (installed) {
-      const catalogPart = partsById[installed.partId]
-      if (!catalogPart) continue
-      total += costToMintYen(
-        installed.band,
-        entry,
-        catalogPart.priceYen,
-        repairStepFraction,
-        catalogPart.fitmentClass,
-      )
-    } else if (isPartMissing(car, model, partId)) {
-      total += entry.stockReplacementPriceYenByClass[carFitmentClass]
-    }
+    const fix = partFixToBand(
+      car,
+      model,
+      partId,
+      entry,
+      partsById,
+      fixContext,
+      'mint',
+      carFitmentClass,
+    )
+    if (fix) fixes.push(fix)
   }
-  return total
+  return sumFixCosts(fixes).partsYen
 }
 
 /**

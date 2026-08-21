@@ -532,7 +532,7 @@ export const GameStateSchema = z.object({
    * The shops owned, by `toolShops.json` id - the top of the tool ladder. A
    * shop covers several lines at once and lifts every line it covers to level
    * 3 (`toolLevelsFor`, sim/toolLines.ts), which is what the repair level, an
-   * operation's capability gate and a service task's `minToolTier` all read.
+   * operation's capability gate and a service task's own gate all read.
    */
   toolShopsOwned: z.array(z.string().min(1)).default([]),
   /**
@@ -1262,7 +1262,7 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
      * parking" overflow slot are all full - genuinely nowhere to put the
      * car. No money spent, the win is forfeited rather than the purchase
      * failing loudly. `tool-tier`: a service-job accept refused because at
-     * least one task's `minToolTier` exceeds the line's current tier.
+     * least one task asks for a Restore with no covering shop owned.
      * `operation`: a signature template's `requiresOperationId` is no longer
      * unlocked at accept time (the scene dropped below Shop, the tool line
      * dropped below tier 3, or the offer is stale) - the capability-gated

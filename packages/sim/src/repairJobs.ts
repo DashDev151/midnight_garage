@@ -7,6 +7,7 @@ import {
   type ComponentId,
   type ConditionBand,
   type DayLogEntry,
+  type EconomyConfig,
   type GameState,
   type Job,
   type Part,
@@ -587,6 +588,191 @@ function partsBillYen(
       subject.catalogPart.fitmentClass,
     ) * perfectionistCostMultiplier(state.staff, context.economy),
   )
+}
+
+// --- the shared fix price -------------------------------------------------
+
+/**
+ * Everything a fix price reads from the world. Deliberately narrower than
+ * `SimContext`, which satisfies it as it stands: the band maths in `bands.ts`
+ * carries an `EconomyConfig` and no context at all, so this lets every caller
+ * pass what it already holds.
+ */
+export interface FixCostContext {
+  economy: EconomyConfig
+}
+
+/** What putting one part right costs, and which job buys it. `'replace'` is
+ * not a job: it is the answer for a part no job can save. */
+export interface PartFixCost {
+  jobKind: RepairJobKind | 'replace'
+  /** The banded parts bill, or a replacement part's own price. */
+  partsYen: number
+  /** One day's hire on the line whose machine the job cannot be worked
+   * without, counted once. Zero wherever the work can be done by hand: a
+   * replacement, a Restore, an all-tier-1 recipe, and every tier 2 recipe whose
+   * steps can all be slogged, which is nearly all of them. */
+  hireFeeYen: number
+  /** The tool LINE that day is bought on, or null when the work needs no day.
+   * A hire is sold per line rather than per part, so the line is what
+   * identifies a day when several parts' fixes are summed (`sumFixCosts`). */
+  hireLine: ComponentId | null
+}
+
+/** Several parts' fixes taken as one bill: what the parts cost, what the days
+ * cost, and the two together. */
+export interface FixBill {
+  /** Every fix's own `partsYen`, summed. */
+  partsYen: number
+  /** The day-hire the whole bill genuinely cannot avoid, one day per LINE. */
+  hireYen: number
+  /** `partsYen + hireYen`. */
+  totalYen: number
+}
+
+/**
+ * Several parts' fixes priced as one bill. Parts add up; DAYS DO NOT.
+ *
+ * A day's hire buys a line's entire tier 2 kit for that day, so a bill that
+ * welds two slots on the same line buys that line ONCE, not twice, and a bill
+ * spanning six lines buys six days at most. Every walk that sums fixes across
+ * several parts totals them here rather than adding `partsYen + hireFeeYen`
+ * slot by slot, so no walker can charge the same day twice.
+ *
+ * Few bills name a day at all. A bench job names one only where the work cannot
+ * be done by hand (`forcedHireDayFor`, the ONE predicate for that question);
+ * everything else is worked by hand at `toolHire.slogMultiplier` energy, which
+ * costs a player time rather than money and so never reaches this bill. A
+ * caller folding in a day of its own de-duplicates against the bench days on
+ * the same line, which is the whole reason a fee names its line.
+ *
+ * `partFixCostYen` stays a per-part price and keeps returning a per-part fee:
+ * a single-part quote really does buy that part's day. The de-duplication is
+ * the walk's job, and this is where the walk does it.
+ */
+export function sumFixCosts(fixes: Iterable<PartFixCost>): FixBill {
+  let partsYen = 0
+  const dayByLine = new Map<ComponentId, number>()
+  for (const fix of fixes) {
+    partsYen += fix.partsYen
+    if (fix.hireLine !== null && fix.hireFeeYen > 0) dayByLine.set(fix.hireLine, fix.hireFeeYen)
+  }
+  let hireYen = 0
+  for (const feeYen of dayByLine.values()) hireYen += feeYen
+  return { partsYen, hireYen, totalYen: partsYen + hireYen }
+}
+
+/** The smallest job whose finished band reaches `targetBand`: Service to worn,
+ * Rebuild to fine, Restore to mint. `REPAIR_JOB_KINDS` is in target order, so
+ * the first job that reaches it is the cheapest one that does. */
+function smallestJobReaching(targetBand: ConditionBand, context: FixCostContext): RepairJobKind {
+  const wanted = bandIndex(targetBand)
+  return (
+    REPAIR_JOB_KINDS.find((kind) => bandIndex(context.economy.repairJobs[kind].target) >= wanted) ??
+    'restore'
+  )
+}
+
+/**
+ * The day's hire this job genuinely cannot be worked without, and the line it
+ * is bought on, or null when the work can be done by hand instead. THE ONE
+ * ANSWER to what forces a hire day: every reader that needs the question
+ * settled asks this, so no second opinion about it can grow anywhere.
+ *
+ * A tier 2 tool is a RATE, not a wall. Without the machine a tier 2 step is
+ * slogged at `toolHire.slogMultiplier` energy and no yen at all
+ * (`availabilityFor`), so owning the line buys speed rather than access and no
+ * day has to be bought for it. The one exception is a welding or machining step
+ * (`requiresMachine`), which can never be slogged: that day is the only one
+ * anyone is forced to buy.
+ *
+ * It is `availabilityFor`'s own `locked` case asked without a shop to read: the
+ * same criterion the bench applies to a step in front of it, from the side that
+ * has no state and has to price the work anyway. Nothing else in the economy
+ * names a day. Depth does not: reaching a buried slot with no rig is worked by
+ * hand for energy and no yen (`accessRoute`, jobs.ts), so no walk, quote or
+ * valuation charges for access.
+ *
+ * Counted once however many such steps the recipe holds, and charged on the
+ * STEP's own line, which is the line a hire has to cover: the exhaust's Rebuild
+ * borrows the body corner's MIG, so it wants the body line hired rather than
+ * the engine line the exhaust itself sits on.
+ *
+ * A Restore has no hire route of any kind, and a part with no recipe ladder at
+ * all (the two zone-derived body carriers) names no day either: the body
+ * pipeline prices its work, not the bench.
+ */
+export function forcedHireDayFor(
+  entry: CarPartTaxonomyEntry,
+  kind: RepairJobKind,
+  context: FixCostContext,
+): { feeYen: number; line: ComponentId } | null {
+  // No line hires out a shop, so a Restore assumes the covering shop rather
+  // than pricing a day that cannot be bought.
+  if (kind === 'restore') return null
+  const recipe = WORKBENCH.recipes[entry.id]?.[kind]
+  if (!recipe) return null
+  const forced = recipe.find(
+    (step) =>
+      step.requiresMachine &&
+      toolTierOnBench(WORKBENCH, stepBenchFor(step, entry.group), step.tool) === 2,
+  )
+  if (!forced) return null
+  const line = stepGroupFor(forced, entry.group)
+  return { feeYen: context.economy.toolHire.feeYenByGroup[line], line }
+}
+
+/**
+ * What it costs to put ONE part right, priced for the whole economy at a single
+ * fixed assumption: a garage that hires whatever it does not own. The player's
+ * own tool lines, hires and shops are never read here, so what a fix is worth
+ * to the market never depends on what is bolted to this shop's wall.
+ *
+ * A part past saving - scrap, or a consumable that is replaced rather than
+ * repaired - answers `'replace'` at a stock replacement price and no fee.
+ * Anything else answers with the smallest job that reaches `targetBand`, priced
+ * as the banded parts bill (`costToBandYen`, the one repair-money formula) plus
+ * a single day's hire ONLY where the job cannot be worked by hand at all.
+ *
+ * That last part is the whole of what a fee means here. A tier 2 tool is a rate
+ * rather than a wall: a garage without it slogs the step at
+ * `toolHire.slogMultiplier` energy and pays nothing, so it buys speed rather
+ * than access. The only day a bench job is forced to buy is one a welding or
+ * machining step demands (`requiresMachine`, `forcedHireDayFor`), and every
+ * other recipe therefore prices at its parts alone. By-hand work costs energy,
+ * not money, and energy is not a thing a bill can carry.
+ *
+ * A part already at or above `targetBand` costs nothing at all, fee included:
+ * there is no work, so there is no day to hire.
+ *
+ * Callers keep their own labour accounting. Only the decision and the two price
+ * atoms live here, which is why this returns the fee separately rather than
+ * folded in: a quote charges it, a player who owns the line keeps it. A caller
+ * pricing SEVERAL parts sums them through `sumFixCosts`, which charges each
+ * line's day once however many of these parts want it.
+ */
+export function partFixCostYen(
+  entry: CarPartTaxonomyEntry,
+  part: Part,
+  band: ConditionBand,
+  targetBand: ConditionBand,
+  context: FixCostContext,
+): PartFixCost {
+  const partsYen = costToBandYen(
+    band,
+    targetBand,
+    entry,
+    part.priceYen,
+    context.economy.restoration.repairStepFraction,
+    part.fitmentClass,
+  )
+  if (!canRepair(band, entry)) {
+    return { jobKind: 'replace', partsYen, hireFeeYen: 0, hireLine: null }
+  }
+  const jobKind = smallestJobReaching(targetBand, context)
+  if (partsYen === 0) return { jobKind, partsYen, hireFeeYen: 0, hireLine: null }
+  const day = forcedHireDayFor(entry, jobKind, context)
+  return { jobKind, partsYen, hireFeeYen: day?.feeYen ?? 0, hireLine: day?.line ?? null }
 }
 
 // --- job cards ------------------------------------------------------------

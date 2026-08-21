@@ -19,7 +19,7 @@ import type { UpgradeToolLineAction } from './actions'
  * owned at tier 1 or above (progression bible law 1: nothing basic is
  * ever locked); upgrading buys labor efficiency (the level IS the
  * `repairLevel` the banded repair formula climbs at) and capability
- * ceilings (`minToolTier` on service-job tasks). There is no ownership
+ * ceilings (a Restore, and the service jobs that ask for one). There is no ownership
  * gate anywhere - the old owns-the-machine refusal class is structurally
  * unrepresentable.
  *
@@ -89,7 +89,7 @@ export function ownsToolShopForGroup(
  * shop covering it is owned. The one derivation everything capability-shaped
  * reads - repair speed and repair ceiling (`repairLevelForGroup`, bands.ts),
  * an operation's gate (`craftOperationCapabilityGateReason`), a service task's
- * `minToolTier` (`taskToolDeficit`) and the NA-to-turbo conversion - so a rung
+ * own gate (`taskToolBlocked`) and the NA-to-turbo conversion - so a rung
  * and a shop are one ladder at every call site rather than two parallel
  * checks.
  */

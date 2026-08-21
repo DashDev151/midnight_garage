@@ -46,8 +46,9 @@ import {
  * not price-driven (the cursor always starts on the first dealer), and stay
  * literal; the FINAL winner and the later drop order are not - both ride how
  * many rungs the room climbs before the fuse burns out, which is a function
- * of `roomReadYen`, so a repricing of either fixture lot can move them too
- * (see sprint216.md's fear-pricing re-pin below for the one time it has).
+ * of `roomReadYen`, so a repricing or a re-authoring of either fixture lot
+ * can move them too (see the packed war's own re-pin note below, where it
+ * has now happened twice).
  */
 
 // This file's own seeded room simulations are real work, not a slow test in
@@ -301,34 +302,34 @@ describe('auctionRoom machine', () => {
     expect(room.status).toBe('lost')
     expect(room.boardYen).toBeLessThanOrEqual(room.clearingYen)
     expect(room.boardYen + room.incrementYen).toBeGreaterThan(room.clearingYen)
-    // No feud ignites at this seed: the packed room's opening board-to-clearing
-    // gap clears `feudMinGapRungs` but the chance draw fails, and the gap falls
-    // under the threshold as the room climbs. The feud machinery has its own
-    // dedicated coverage further down this file.
+    // A feud ignites early in this war (Endo and Mrs. Sakaki trade the board
+    // from the third rung) and has burnt out by the hammer, so the field reads
+    // null here. The feud machinery has its own dedicated coverage further
+    // down this file.
     expect(room.feud).toBeNull()
-    // Re-derived for sprint216.md (the fearful room), same cause as the thin
-    // room above: the trap lot's `roomReadYen` repriced under
-    // `sheetGuideValueYen`'s rewritten formula, moving the rung count this
-    // war climbs before the fuse burns out. Endo now survives to the
-    // hammer, and the last two drops land on different dealers (see the
-    // `drops` list below) - the round-robin cursor and the thinning curve
-    // are both unchanged, only how many times either one fires. Re-derived
-    // from a real run.
-    expect(room.leaderName).toBe('Endo')
-    expect(room.log.at(-1)).toBe(`Hammer. Endo takes it at ${formatYen(room.boardYen)}.`)
+    // Re-derived for sprint227.md, same cause as every previous re-pin here:
+    // the trap lot's fixture was re-authored onto `clunk-over-bumps` /
+    // `rotted-subframe-mount` (auctionRoomDemo.ts), which reads higher than
+    // the old cooling fixture, so this war climbs more rungs before the fuse
+    // burns out. Mrs. Sakaki takes the hammer off Endo and the last two drops
+    // land on different dealers (see the `drops` list below) - the round-robin
+    // cursor and the thinning curve are both unchanged, only how many times
+    // either one fires. Re-derived from a real run.
+    expect(room.leaderName).toBe('Mrs. Sakaki')
+    expect(room.log.at(-1)).toBe(`Hammer. Mrs. Sakaki takes it at ${formatYen(room.boardYen)}.`)
     expect(dealersInRoom(room)).toBe(1)
     expect(room.epilogue).toBe('You let it go. The room can overpay for that one.')
 
     const joined = room.log.join('\n')
-    // The first three drops (positions 1-3) are unmoved by the repricing
-    // above; the last two (4-5) now land on Mrs. Sakaki and Ogata rather
-    // than Ogata and Endo - same cause, re-derived from a real run.
+    // The first three drops (positions 1-3) are unmoved by the re-authoring
+    // above; the last two (4-5) now land on Ogata and Endo rather than
+    // Mrs. Sakaki and Ogata - same cause, re-derived from a real run.
     const drops = [
       'a quiet man in a good coat closes the folder.',
       'Ubukata sets the paddle down.',
       'Toyoshima steps out for a smoke.',
-      'Mrs. Sakaki checks the time and is done.',
-      'Ogata closes the folder.',
+      'Ogata checks the time and is done.',
+      'Endo closes the folder.',
     ]
     let lastIndex = -1
     for (const drop of drops) {

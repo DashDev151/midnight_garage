@@ -25,6 +25,30 @@ they disagree; the spec beats both on design intent.
   Rebuild's premium over Service is the better band, the higher value, and the
   removal/refit work around it. Tune from one lever later.
 
+## Decisions taken during implementation
+
+Rulings the arc produced rather than started with, recorded here because they bind every
+later sprint. Both were forced by measurement, and both are stated as behaviour: the
+figures that produced them are in `sprint227.md`.
+
+- **D-I1 (a day is bought per LINE, never per part).** Hiring a line buys that line's whole
+  tier 2 kit for the day, so a bill that welds nine engine slots buys the engine line ONCE,
+  and a bill spanning six lines buys six days at most. A single-part price still names its
+  own day, because a single-part job really does buy one; the de-duplication belongs to
+  whatever walk sums several parts, and a fee therefore has to name the LINE it is bought
+  on, not only its amount. Felt behaviour: planning a day around one bench is rewarded, and
+  a big job never costs more in hire than a small one on the same line.
+- **D-I2 (what a value counts, and what a quote adds).** A car's VALUE counts the parts and
+  the labour a fix needs and never a tool-hire day: a fee whose job is to pace tool
+  ownership on the player's own shop floor must not decide what a car is worth, and
+  charging a whole day's hire against one flip charges a fixed overhead against a single
+  play. A customer QUOTE does fold a day in, but only the day a WELD forces, because a tier
+  2 tool is a rate and not a wall everywhere else: an unowned, unhired step is worked by
+  hand at `toolHire.slogMultiplier` energy for no yen, so charging cash for it would price a
+  choice the player still has. Felt behaviour: a cheap car is never worth less than nothing
+  because the market imagined a rig it would not pay for, and a commission that genuinely
+  cannot be done by hand still covers the day before any margin.
+
 ## Locked implementation rules (used by every sprint doc)
 
 1. **Per-step tool-driven gating.** A job's step list is the requirement. Each step names
@@ -93,7 +117,8 @@ they disagree; the spec beats both on design intent.
 - [ ] `machineGate` (taxonomy field + `MachineGateOperationSchema` + `machineGateGroupFor`)
 - [ ] `repairBandCeilingByTier` + `repairCeilingForLevel` + `clampRepairTarget`
 - [ ] `energyPerBandStepByToolTier` + `energyToClimb`'s tier parameter
-- [ ] `machineShopAssist` (whole block) + `machineAssistFeeYen` + `signatureOpFeeYen`'s fee table read
+- [ ] `machineShopAssist` (whole block) + `machineAssistFeeYen` (`signatureOpFeeYen` is
+      already gone: sprint 227 retired the one probe that read it and the function with it)
 - [ ] `machinelessLaborMultiplier` + `machineLaborMultiplier` (replaced by slog routing)
 - [ ] `machineListing` / `nextMachineListingDay` / `rollMachineListings` (D-A2)
 - [ ] `workbenchPartId` (replaced by `benchParts`), `WorkStationTray.vue`, `WorkbenchPanel.vue`

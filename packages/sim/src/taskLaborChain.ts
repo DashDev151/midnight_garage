@@ -1,26 +1,25 @@
-import type { CarInstance, CarPartId, ConditionBand, GameState } from '@midnight-garage/content'
 import {
-  assemblyMachineGateGroup,
-  externalBlockersFor,
-  removeAssemblyLaborSlotsFor,
-} from './assemblies'
-import { planPartRepair } from './bands'
+  WORKBENCH,
+  type CarInstance,
+  type CarPartId,
+  type RepairJobKind,
+} from '@midnight-garage/content'
+import { externalBlockersFor, removeAssemblyLaborSlotsFor } from './assemblies'
+import { bodyPartRepairLabourPoints, isBodyDerivedPart } from './bodyPipeline'
 import type { SimContext } from './context'
-import {
-  installLaborSlotsFor,
-  machineGateGroupFor,
-  machineLaborMultiplier,
-  occupiedBlockers,
-  removeLaborSlotsFor,
-} from './jobs'
+import { installLaborSlotsFor, occupiedBlockers, removeLaborSlotsFor } from './jobs'
+import { targetBandFor } from './repairJobs'
 
 /**
  * What a task's target asks of the part currently in `carPartId`'s slot: a
- * `ConditionBand` climbs the part already there (the bench-repair route),
- * `'install'` swaps a fresh one in (the buy-new route) - the same fork
- * `serviceJobCostBreakdown` already makes per task.
+ * `RepairJobKind` works the part already there on the bench (the repair
+ * route), `'install'` swaps a fresh one in (the buy-new route) - the same
+ * fork `serviceJobCostBreakdown` already makes per task. The job KIND rather
+ * than a band, because the bench prices a job's recipe rather than a climb:
+ * the caller resolves the band it wants into the smallest job that reaches
+ * it (`partFixCostYen`, repairJobs.ts) and passes that job here.
  */
-export type TaskLaborChainTarget = ConditionBand | 'install'
+export type TaskLaborChainTarget = RepairJobKind | 'install'
 
 /**
  * The labour a task's whole physical chain demands, broken into the stages
@@ -31,9 +30,9 @@ export type TaskLaborChainTarget = ConditionBand | 'install'
  */
 export interface TaskLaborChainBreakdown {
   /** Clearing every occupied slot that blocks access, and putting each one
-   * back once the real work is done - removal is charged at that blocker's
-   * own gate; the refit-back is free at the shipped `refitUnchangedMember`
-   * rate, since the blocker itself never changes here. */
+   * back once the real work is done - the blocker's own removal figure plus
+   * the shipped `refitUnchangedMember` rate, since the blocker itself never
+   * changes here. */
   blockerPoints: number
   /** Pulling the target part off: an assembly pull when it's a member of
    * one of the three sub-assemblies (the whole thing comes off together,
@@ -41,19 +40,20 @@ export interface TaskLaborChainBreakdown {
    * the slot is already empty, or when the slot never leaves the car at
    * all (the three fixed body carriers). */
   removalPoints: number
-  /** The bench work itself: a repair climb for a repair-route task, the
-   * (currently free) bench swap-in for a buy-new part going into an
-   * assembly's bench container, or zero for a buy-new part outside an
-   * assembly (there is no bench step to charge - the part goes straight
-   * into the slot on refit). */
+  /** The work itself: the repair job's own recipe steps at
+   * `energy.energyPerStepPoints` for a repair-route task, the (paid) bench
+   * swap-in for a buy-new part going into an assembly's bench container, or
+   * zero for a buy-new part outside an assembly (there is no bench step to
+   * charge - the part goes straight into the slot on refit). A repair-route
+   * task on a zone-derived body carrier has no bench job at all and prices the
+   * body pipeline's own stages instead (`inPlaceRepairPoints`). */
   workPoints: number
   /** Refitting the part so the customer's car actually improves: an
-   * assembly member prices the flat `refitAssembly` figure at the
-   * assembly's own machine gate (matching `resolveRefitAssembly` exactly -
-   * a customer quote and the player's own refit can never drift); a loose
-   * part prices its own class-based install rate at its own 'install' gate.
-   * Always charged - a delivered task always improves its slot, never a
-   * like-for-like refit. */
+   * assembly member prices the flat `refitAssembly` figure (matching
+   * `resolveRefitAssembly` exactly - a customer quote and the player's own
+   * refit can never drift); a loose part prices its own class-based install
+   * rate. Always charged - a delivered task always improves its slot, never
+   * a like-for-like refit. */
   refitPoints: number
   /** blockerPoints + removalPoints + workPoints + refitPoints. */
   totalPoints: number
@@ -71,54 +71,84 @@ function totals(
 }
 
 /**
- * The bench-repair climb on the part currently installed at `carPartId`,
- * always at repair level 1 - the market baseline a customer quote has
- * always priced work at, independent of the shop's own tool tier. Zero when
- * nothing is installed there, or the catalog can't resolve its price
- * (defensive; never happens for real content).
+ * The bench job itself, priced as what a job IS: its recipe's steps at the
+ * flat `energy.energyPerStepPoints`, never slog-multiplied - the chain quotes
+ * a garage that hires whatever it does not own, and a hired step costs base
+ * energy.
+ *
+ * Zero for a part with no recipe ladder at all (the two zone-derived body
+ * carriers): the bench has no job for them, and `inPlaceRepairPoints` below
+ * prices their work off the body pipeline instead.
  */
-function repairClimbPoints(
+function jobStepPoints(carPartId: CarPartId, kind: RepairJobKind, context: SimContext): number {
+  const steps = WORKBENCH.recipes[carPartId]?.[kind]
+  return steps ? steps.length * context.economy.energy.energyPerStepPoints : 0
+}
+
+/**
+ * The in-place work a fixed carrier's repair route asks for, from whichever
+ * model actually holds that carrier's work.
+ *
+ * `chassis` is bench work and prices as a recipe's steps. The two zone-derived
+ * carriers have no recipe ladder at all, because the body pipeline works them a
+ * STAGE at a time, so they price through the pipeline's own zone walk
+ * (`bodyPartRepairLabourPoints`, bodyPipeline.ts) - the sibling of the money
+ * bill `bands.ts` already routes them through, off the same walk, so a quote
+ * charges for exactly the stages the body bay would work. Only the zones
+ * genuinely short of the target band run a stage, so this measures a distance:
+ * one dented corner quotes a fraction of a shell needing all nine.
+ *
+ * The target band is the one the job kind lands on (`targetBandFor`), which is
+ * what keeps the caller's chosen job and the stages priced here the same piece
+ * of work: `serviceJobCostBreakdown` resolves the band a task asks for into the
+ * smallest job reaching it, and this resolves that job straight back.
+ *
+ * A car not on the zone model has no zones to walk and so no stages to charge.
+ * Every generated car carries `zoneState`, so that is the shape a quoted car
+ * has rather than a case a quote leans on.
+ */
+function inPlaceRepairPoints(
   car: CarInstance,
   carPartId: CarPartId,
-  targetBand: ConditionBand,
+  kind: RepairJobKind,
   context: SimContext,
 ): number {
-  const installed = car.parts[carPartId]?.installed
-  const entry = context.partsTaxonomyById[carPartId]
-  const catalogPart = installed ? context.partsById[installed.partId] : undefined
-  if (!installed || !entry || !catalogPart) return 0
-  const { repairStepFraction } = context.economy.restoration
-  const { energyPerBandStepByToolTier } = context.economy.energy
-  return planPartRepair(
-    installed.band,
-    targetBand,
-    1,
-    entry,
-    catalogPart.priceYen,
-    repairStepFraction,
-    energyPerBandStepByToolTier,
-  ).laborSlotsRequired
+  if (!isBodyDerivedPart(carPartId)) return jobStepPoints(carPartId, kind, context)
+  if (!car.zoneState) return 0
+  return bodyPartRepairLabourPoints(
+    carPartId,
+    car.zoneState,
+    targetBandFor(kind, context),
+    context.economy.energy.bodyStagePoints,
+  )
 }
 
 /**
  * The full labour chain one task's target slot demands: every external
  * blocker cleared and put back, the part (or its whole assembly, when it's
- * a member) pulled, the bench work, and the refit that actually delivers
+ * a member) pulled, the bench job, and the refit that actually delivers
  * the improvement - composed entirely from the existing per-slot and
- * per-assembly primitives (`jobs.ts`, `assemblies.ts`, `bands.ts`), each
- * charged at its own machine-gate multiplier for the shop `state` describes.
+ * per-assembly primitives (`jobs.ts`, `assemblies.ts`) plus the job model's
+ * own step count.
  *
- * `state` is the REAL current shop, not a hypothetical one: a customer pays
- * for the shop they walked into, so every gated step here prices at
- * whatever multiplier that shop actually faces right now
- * (`machineLaborMultiplier`) - base rate with the group's machine owned or
- * hired today, `machineShopAssist.machinelessLaborMultiplier` without it.
+ * Every stage is priced at BASE rate, and the chain reads no shop state at
+ * all. What a fix costs the market is a fixed assumption - a garage that hires
+ * whatever it does not own - so a quote never moves with what is bolted to this
+ * shop's wall.
+ *
+ * The chain is LABOUR and nothing else: it names no yen at all, not even for a
+ * buried slot. Depth is a rate rather than a wall, and reaching a buried part
+ * with no rig owned and no hire booked costs `toolHire.slogMultiplier` times
+ * the labour and no money (`accessRoute`, jobs.ts), so no day has to be bought
+ * to get at one. The only day the economy ever names is a step that cannot be
+ * worked by hand at all (`forcedHireDayFor`, repairJobs.ts), and that day rides
+ * on the bench job's own price rather than on this chain.
  *
  * A member of one of the three sub-assemblies (`assemblies.json`) prices the
  * ASSEMBLY's own pull and refit, since the whole thing comes off the car
  * together, not just its own slot; its external blockers are the
  * assembly's own (`externalBlockersFor`), not just this one member's direct
- * `blockedBy`. A non-member slot prices its own plain removal, install, and
+ * `blockedBy`. A non-member slot prices its own plain removal, install and
  * direct blockers.
  *
  * A slot with nothing installed has nothing to remove and no blockers worth
@@ -128,15 +158,16 @@ function repairClimbPoints(
  *
  * The three fixed body carriers (`chassis`, `bodywork`, `paint`,
  * `removable: false`) never leave the car: no blockers, no pull, no refit -
- * just the in-place work itself (a repair climb, or a straight replace for
- * a buy-new task, mirroring `applyJobToCar`'s replace-in-place branch).
+ * just the in-place work itself (`inPlaceRepairPoints`: the bench job for
+ * `chassis`, the body pipeline's stage walk for the two zone-derived carriers,
+ * or a straight replace for a buy-new task, mirroring `applyJobToCar`'s
+ * replace-in-place branch).
  */
 export function taskLaborChain(
   car: CarInstance,
   carPartId: CarPartId,
   target: TaskLaborChainTarget,
   context: SimContext,
-  state: GameState,
 ): TaskLaborChainBreakdown {
   const { pointsPerLabour, actionPoints } = context.economy.energy
   const entry = context.partsTaxonomyById[carPartId]
@@ -150,9 +181,8 @@ export function taskLaborChain(
   if (!entry.removable) {
     const workPoints =
       target === 'install'
-        ? installLaborSlotsFor(carPartId, context) *
-          machineLaborMultiplier(machineGateGroupFor(carPartId, 'install', context), state, context)
-        : repairClimbPoints(car, carPartId, target, context)
+        ? installLaborSlotsFor(carPartId, context)
+        : inPlaceRepairPoints(car, carPartId, target, context)
     return totals(
       { blockerPoints: 0, removalPoints: 0, workPoints, refitPoints: 0 },
       pointsPerLabour,
@@ -169,11 +199,13 @@ export function taskLaborChain(
         pointsPerLabour,
       )
     }
-    const refitPoints =
-      installLaborSlotsFor(carPartId, context) *
-      machineLaborMultiplier(machineGateGroupFor(carPartId, 'install', context), state, context)
     return totals(
-      { blockerPoints: 0, removalPoints: 0, workPoints: 0, refitPoints },
+      {
+        blockerPoints: 0,
+        removalPoints: 0,
+        workPoints: 0,
+        refitPoints: installLaborSlotsFor(carPartId, context),
+      },
       pointsPerLabour,
     )
   }
@@ -183,41 +215,25 @@ export function taskLaborChain(
     : occupiedBlockers(car, carPartId, context)
   let blockerPoints = 0
   for (const blockerId of blockerIds) {
-    blockerPoints +=
-      removeLaborSlotsFor(blockerId, context) *
-      machineLaborMultiplier(machineGateGroupFor(blockerId, 'remove', context), state, context)
     // Putting a blocker back is always the unchanged-member rate: this
     // chain never alters a blocker itself, only clears it out of the way.
-    blockerPoints +=
-      actionPoints.refitUnchangedMember *
-      machineLaborMultiplier(machineGateGroupFor(blockerId, 'install', context), state, context)
+    blockerPoints += removeLaborSlotsFor(blockerId, context) + actionPoints.refitUnchangedMember
   }
 
   const removalPoints = assemblyDef
-    ? removeAssemblyLaborSlotsFor(car, assemblyDef, context) *
-      machineLaborMultiplier(assemblyMachineGateGroup(assemblyDef, context), state, context)
-    : removeLaborSlotsFor(carPartId, context) *
-      machineLaborMultiplier(machineGateGroupFor(carPartId, 'remove', context), state, context)
+    ? removeAssemblyLaborSlotsFor(car, assemblyDef, context)
+    : removeLaborSlotsFor(carPartId, context)
 
   const workPoints =
     target === 'install'
       ? assemblyDef
         ? actionPoints.benchFitMember
         : 0
-      : repairClimbPoints(car, carPartId, target, context)
+      : jobStepPoints(carPartId, target, context)
 
-  const refitGateGroup = assemblyDef
-    ? assemblyMachineGateGroup(assemblyDef, context)
-    : machineGateGroupFor(carPartId, 'install', context)
-  // An assembly member's refit prices the same flat `refitAssembly` figure
-  // `resolveRefitAssembly` actually charges for the whole unit (sprint212.md,
-  // "the labour laws") - a customer quote and the player's own refit must
-  // never drift. A non-member slot still prices its own class-based install
-  // rate.
   const refitPoints = assemblyDef
-    ? actionPoints.refitAssembly * machineLaborMultiplier(refitGateGroup, state, context)
-    : installLaborSlotsFor(carPartId, context) *
-      machineLaborMultiplier(refitGateGroup, state, context)
+    ? actionPoints.refitAssembly
+    : installLaborSlotsFor(carPartId, context)
 
   return totals({ blockerPoints, removalPoints, workPoints, refitPoints }, pointsPerLabour)
 }

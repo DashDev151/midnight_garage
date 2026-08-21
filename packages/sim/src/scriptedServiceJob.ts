@@ -29,16 +29,11 @@ import { deriveServiceJobPayoutYen } from './serviceJobs'
 /**
  * Builds the scripted job's fixed customer car and derives its payout
  * against that specific car - pure and RNG-free, so the recipe's own
- * `marginRoll` and task list are byte-identical under any career seed; the
- * payout figure itself still reads `state`'s real tool ownership, exactly
- * like every other generated job (`deriveServiceJobPayoutYen`), so it can
- * vary with when in a career the job happens to be injected.
+ * `marginRoll` and task list are byte-identical under any career seed, and
+ * so is the payout: what a fix costs the market is a fixed assumption
+ * (`deriveServiceJobPayoutYen`), never a reading of this shop's own wall.
  */
-export function buildScriptedServiceJob(
-  context: SimContext,
-  day: number,
-  state: GameState,
-): ServiceJob {
+export function buildScriptedServiceJob(context: SimContext, day: number): ServiceJob {
   const recipe = SCRIPTED_SERVICE_JOB
   const model = context.modelsById[recipe.modelId]
   if (!model) {
@@ -120,14 +115,7 @@ export function buildScriptedServiceJob(
   // picked from the same `[marginMin, marginMax]` range every generated
   // service job's payout rolls within, so this job's payout lands on the
   // same formula, and therefore the same scale, as an ordinary tier-1 job.
-  const payoutYen = deriveServiceJobPayoutYen(
-    recipe.tasks,
-    car,
-    model,
-    context,
-    state,
-    recipe.marginRoll,
-  )
+  const payoutYen = deriveServiceJobPayoutYen(recipe.tasks, car, model, context, recipe.marginRoll)
 
   return {
     id: recipe.jobId,
@@ -184,6 +172,6 @@ export function ensureScriptedServiceJob(
   if (state.activeServiceJobs.some((j) => j.id === recipe.jobId)) return state
   return {
     ...state,
-    serviceJobOffers: [...state.serviceJobOffers, buildScriptedServiceJob(context, day, state)],
+    serviceJobOffers: [...state.serviceJobOffers, buildScriptedServiceJob(context, day)],
   }
 }

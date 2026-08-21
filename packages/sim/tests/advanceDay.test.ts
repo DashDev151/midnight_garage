@@ -441,7 +441,26 @@ describe('advanceDay golden master', () => {
     // the roll never had an eligible candidate to draw from and never drew),
     // and re-basing removal and install labour onto `accessRoute` changes no
     // figure this state carries at day 31. Re-derived from a real run.
-    expect(hashState(finalState)).toBe('f1441261')
+    //
+    // It moves once more for the re-based quote, in two measurable steps.
+    // First, everything a quote is now built from: a symptom candidate's fix
+    // cost is the job model's own price (the smallest job that reaches
+    // `fine`, its banded parts bill and its full labour chain) rather than a
+    // band climb, so every fear-priced sheet on the daily auction board
+    // reprices, and a service-job template is offerable on the BAND it asks
+    // for rather than on a tool tier, so the daily offer board holds
+    // different templates at different payouts. Second, a fix names a day's
+    // tool hire only where a welding or machining step forces one, which is
+    // two recipes on the whole ladder rather than nearly all of them, so
+    // those same sheets read higher again. This career neither bids nor takes
+    // a commission, but it generates both boards every day and they are in
+    // the state this hash serialises. Measured rather than assumed: restore
+    // the superseded "any tier 2 step names a day" rule and this state
+    // hashes to exactly
+    // `aa423c54`, which is the first step on its own. The closed-form cash
+    // reconciliation below is unchanged to the yen, which is the proof that
+    // no money this script itself spends moved. Re-derived from a real run.
+    expect(hashState(finalState)).toBe('74a9b160')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -840,7 +859,17 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // classifieds roll that left `advanceDay` never drew here, since
     // reputation never leaves `unknown` and no rung was ever eligible to
     // list. Re-derived from a real run.
-    expect(hashState(acquisitionCareer().sold)).toBe('4f33444b')
+    //
+    // It moves once more, alongside the 30-day master, for the re-based
+    // quote and its two separable steps (everything a quote is built from,
+    // then a day's hire being named only where a welding or machining step
+    // forces one). Both reach this script directly rather than only through
+    // the boards it generates: the lot it buys out and the offer it accepts
+    // are both priced off a guide value that carries the symptom discount.
+    // Measured rather than assumed: restore the superseded "any
+    // tier 2 step names a day" rule and this state hashes to exactly
+    // `62b6611e`, the first step on its own. Re-derived from a real run.
+    expect(hashState(acquisitionCareer().sold)).toBe('ee53b632')
   })
 })
 
